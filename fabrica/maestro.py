@@ -6,8 +6,8 @@ from datetime import date, datetime, time, timedelta
 from .armazem import Armazem
 from .jogo import Carteira
 from .modelos import Canal, Status, Video
-from .pipeline import Pipeline
-from .provedores.base import Publicador
+from .pipeline import ESPERA_ERRO, Pipeline
+from .provedores.base import LimiteAtingido, Publicador
 
 HORA_DE_AGENDAR_AMANHA = 20  # à noite, o dia seguinte já está na agenda
 
@@ -54,17 +54,38 @@ class Maestro:
         for video in self.armazem.listar_videos():
             if self._deve_produzir(video, agora):
                 mudaram.append(self.pipeline.rodar(video, agora))
-            elif video.status is Status.APROVADO:
-                video.id_externo = self.publicador.agendar(video)
-                video.status = Status.AGENDADO_NO_CANAL
-                self.armazem.salvar_video(video)
-                mudaram.append(video)
+            elif self._deve_publicar(video, agora):
+                mudaram.append(self._publicar(video, agora))
 
         carteira = Carteira.carregar(self.armazem)
         for video in self.armazem.listar_videos():
             carteira.lancar_despesa(video.id, video.custo)
         carteira.salvar(self.armazem)
         return mudaram
+
+    @staticmethod
+    def _deve_publicar(video: Video, agora: datetime) -> bool:
+        # APROVADO sem retomar_em = pronto para subir; com retomar_em = esperando cota/limite/erro
+        return video.status is Status.APROVADO and (video.retomar_em is None or agora >= video.retomar_em)
+
+    def _publicar(self, video: Video, agora: datetime) -> Video:
+        """Sobe o aprovado. Cota estourada ou erro passageiro não perdem a aprovação: tenta de novo depois."""
+        try:
+            video.id_externo = self.publicador.agendar(video)
+        except LimiteAtingido as limite:
+            video.retomar_em = agora + (limite.esperar or timedelta(hours=1))
+            video.erro = f"publicação adiada: {limite}"
+        except Exception as erro:  # noqa: BLE001
+            n = video.tentativas.get("publicacao", 0) + 1
+            video.tentativas["publicacao"] = n
+            if n >= self.pipeline.max_tentativas:
+                video.status, video.erro = Status.FALHOU, f"publicacao: {erro}"
+            else:
+                video.retomar_em, video.erro = agora + ESPERA_ERRO, f"publicação, tentativa {n}: {erro}"
+        else:
+            video.status, video.retomar_em, video.erro = Status.AGENDADO_NO_CANAL, None, None
+        self.armazem.salvar_video(video)
+        return video
 
     @staticmethod
     def _deve_produzir(video: Video, agora: datetime) -> bool:

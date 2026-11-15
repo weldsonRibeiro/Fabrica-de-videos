@@ -36,6 +36,7 @@ fabrica/
 ├── cli.py          # linha de comando
 └── provedores/
     ├── base.py     # contratos: Provedor, Publicador, LimiteAtingido
+    ├── youtube.py  # publicação: upload resumível, thumbnail, shorts, agendamento, OAuth
     ├── real.py     # provedor real (compõe claude.py, openai_http.py, montagem.py)
     └── falso.py    # provedores de mentirinha para demo e testes
 ```
@@ -81,6 +82,21 @@ python -m fabrica --provedor real tick
 - **Custos são estimativas** (tokens × tabela de preços do Claude; voz e imagem por valores configuráveis em `FABRICA_CUSTO_VOZ_MIN` e `FABRICA_CUSTO_IMAGEM`). Em USD; use `FABRICA_COTACAO` para converter.
 - ⚠️ A integração com Claude/OpenAI foi testada com clientes simulados e o ffmpeg com arquivos de verdade; **ainda não rodou contra as APIs reais** (não havia chaves no ambiente de desenvolvimento). Rode o primeiro vídeo acompanhando.
 
+### Publicação no YouTube (v0.3)
+
+```bash
+python -m fabrica youtube-autorizar --canal historias    # uma vez por canal; imprime o refresh token p/ o .env
+python -m fabrica --provedor real --publicador youtube tick
+```
+
+- O vídeo sobe como **privado com `publishAt`** no horário que você aprovou (fuso `FABRICA_FUSO`, padrão `America/Sao_Paulo`); o YouTube o publica sozinho. Horário já passado vira "agora + 10 min".
+- Sobem juntos a **thumbnail escolhida** e os **shorts** (cada um agendado `FABRICA_INTERVALO_SHORTS_H` horas depois do anterior, com link para o vídeo completo).
+- **Selo de conteúdo sintético** (`containsSyntheticMedia`) vem ligado: narração e imagens são geradas por IA e o YouTube exige a declaração.
+- **Upload resumível**: se cair no meio, a próxima batida continua do byte onde parou; vídeo, thumbnail e cada short são gravados em `saida/<vídeo>/publicacao.json`, então nada sobe duas vezes.
+- **Cota da API**: cada upload gasta 1.600 das 10.000 unidades diárias (≈ 6 uploads/dia, shorts contam). Estourou? O vídeo continua *aprovado* e é tentado de novo após a virada da cota (00:00 do Pacífico). Para mais canais/shorts, peça aumento de cota ao Google.
+- ⚠️ **Verifique antes de depender disso**: projetos novos da API que não passaram pela auditoria do YouTube podem ter os vídeos enviados **travados como privados** (o agendamento não os libera). Teste com um vídeo e, se for o caso, solicite a auditoria. Thumbnails personalizadas exigem canal verificado.
+- Como o resto, foi testado com um YouTube simulado (upload em pedaços, retomada, cota, OAuth local), **não contra a API real**.
+
 Os canais ficam em [`canais.example.json`](canais.example.json) (nome, nicho, horário de início e
 lista de temas).
 
@@ -93,7 +109,7 @@ vídeo vira `pausado` com um `retomar_em`; a próxima batida do maestro depois d
 ## Roadmap
 
 - [x] **Provedores reais** — Claude (pesquisa/roteiro), TTS, imagem, montagem (ffmpeg) — *falta validar contra as APIs reais*
-- [ ] **Publicação real** — YouTube Data API: upload agendado + shorts
+- [x] **Publicação real** — YouTube Data API: upload agendado + shorts — *falta validar contra a API real*
 - [ ] **Painel de aprovação** — app/web mobile para escolher título, thumbnail e horário em 1 toque
 - [ ] **Notificação** — avisar no celular quando um vídeo ficar pronto
 - [ ] **Métricas reais** — puxar views do canal e converter em moedas automaticamente
