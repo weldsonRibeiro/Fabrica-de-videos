@@ -76,6 +76,11 @@ def principal(argv: list[str] | None = None) -> int:
     s.add_argument("video")
     s.add_argument("total", type=int)
 
+    s = sub.add_parser("painel", help="painel de aprovação no celular (defina FABRICA_PAINEL_CHAVE)")
+    s.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 só atrás de HTTPS/túnel")
+    s.add_argument("--porta", type=int, default=8080)
+    s.add_argument("--com-maestro", action="store_true", help="roda também o tick a cada 60 s (um processo só)")
+
     s = sub.add_parser("youtube-autorizar", help="autoriza um canal do YouTube (uma vez por canal)")
     s.add_argument("--canal", required=True, help="id do canal em canais.json")
 
@@ -103,6 +108,18 @@ def principal(argv: list[str] | None = None) -> int:
         ganhou = carteira.registrar_views(args.video, args.total)
         carteira.salvar(armazem)
         print(f"+{ganhou:.2f} moedas")
+    elif args.cmd == "painel":
+        from .painel import Painel, servir
+
+        chave = os.environ.get("FABRICA_PAINEL_CHAVE", "")
+        canais = [Canal.de_dict(c) for c in json.loads(Path(args.canais).read_text(encoding="utf-8"))]
+        try:
+            painel = Painel(armazem, canais, chave, Path(os.environ.get("FABRICA_SAIDA", "saida")),
+                            os.environ.get("FABRICA_FUSO", "America/Sao_Paulo"))
+        except ValueError as erro:
+            raise SystemExit(f"{erro}. Gere uma: python -c \"import secrets; print(secrets.token_urlsafe(32))\"")
+        maestro = _maestro(args) if args.com_maestro else None
+        servir(painel, args.host, args.porta, (lambda: maestro.tick(_agora(None))) if maestro else None)
     elif args.cmd == "youtube-autorizar":
         from .provedores.youtube import ErroYouTube, autorizar, _sufixo_env
 

@@ -33,6 +33,7 @@ fabrica/
 ├── config.py       # configuração por variáveis de ambiente
 ├── jogo.py         # carteira: vídeo = despesa, view = moeda (idempotente)
 ├── armazem.py      # estado em JSON, escrita atômica (sobrevive a travas e reinícios)
+├── painel.py       # painel web de aprovação (+ web/index.html)
 ├── cli.py          # linha de comando
 └── provedores/
     ├── base.py     # contratos: Provedor, Publicador, LimiteAtingido
@@ -55,6 +56,7 @@ python -m fabrica aprovar 2026-11-16-historias --titulo 1 --thumbnail 0 --public
 python -m fabrica tick                     # sobe e agenda o aprovado
 python -m fabrica views 2026-11-16-historias 5000   # views viram moedas
 python -m fabrica carteira                 # saldo da empresa
+python -m fabrica painel                   # painel de aprovação (veja abaixo)
 ```
 
 ### Provedores reais (v0.2)
@@ -97,6 +99,20 @@ python -m fabrica --provedor real --publicador youtube tick
 - ⚠️ **Verifique antes de depender disso**: projetos novos da API que não passaram pela auditoria do YouTube podem ter os vídeos enviados **travados como privados** (o agendamento não os libera). Teste com um vídeo e, se for o caso, solicite a auditoria. Thumbnails personalizadas exigem canal verificado.
 - Como o resto, foi testado com um YouTube simulado (upload em pedaços, retomada, cota, OAuth local), **não contra a API real**.
 
+### Painel de aprovação no celular (v0.4)
+
+```bash
+export FABRICA_PAINEL_CHAVE=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+python -m fabrica --provedor real --publicador youtube painel --com-maestro
+# abra uma vez: http://127.0.0.1:8080/?k=<a chave>   (a chave vira cookie e some da URL)
+```
+
+- Cada vídeo pronto aparece como um cartão: **player do vídeo, 3 títulos, 3 thumbnails, shorts e o horário** (sugestão: amanhã às 18h). Um toque em **Aprovar e agendar** e o maestro sobe na próxima batida.
+- Lista **"Na fábrica"** com o status de cada vídeo (produzindo, pausado até quando, aguardando você, agendado, falhou) e o **saldo** do jogo no topo. Atualiza sozinho a cada 30 s sem perder o que você já escolheu.
+- `--com-maestro` roda o tick a cada 60 s no mesmo processo (um comando só); sem ele, use o `tick` no cron.
+- **Segurança**: chave obrigatória (≥ 16 caracteres), cookie `HttpOnly`/`SameSite=Strict`, aprovação exige cabeçalho próprio (anti-CSRF), só serve arquivos de dentro de `saida/`, textos da IA nunca entram como HTML. Escuta em `127.0.0.1`; para abrir no celular fora de casa, publique **atrás de HTTPS** (túnel tipo Cloudflare Tunnel/Tailscale ou proxy reverso) — não exponha a porta em HTTP puro.
+- Vídeo com suporte a `Range` (necessário para tocar no Safari/iOS).
+
 Os canais ficam em [`canais.example.json`](canais.example.json) (nome, nicho, horário de início e
 lista de temas).
 
@@ -110,7 +126,7 @@ vídeo vira `pausado` com um `retomar_em`; a próxima batida do maestro depois d
 
 - [x] **Provedores reais** — Claude (pesquisa/roteiro), TTS, imagem, montagem (ffmpeg) — *falta validar contra as APIs reais*
 - [x] **Publicação real** — YouTube Data API: upload agendado + shorts — *falta validar contra a API real*
-- [ ] **Painel de aprovação** — app/web mobile para escolher título, thumbnail e horário em 1 toque
+- [x] **Painel de aprovação** — web mobile para escolher título, thumbnail e horário em 1 toque (falta: recusar/refazer, notificação)
 - [ ] **Notificação** — avisar no celular quando um vídeo ficar pronto
 - [ ] **Métricas reais** — puxar views do canal e converter em moedas automaticamente
 - [ ] **O jogo de verdade** — lojas, missões, escritório visual, upgrades que melhoram a fábrica

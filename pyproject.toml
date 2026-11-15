@@ -13,3 +13,6 @@ fabrica = "fabrica.cli:principal"
 
 [tool.setuptools]
 packages = ["fabrica", "fabrica.provedores"]
+
+[tool.setuptools.package-data]
+fabrica = ["web/*.html"]

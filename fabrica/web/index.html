@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Fábrica de Vídeos</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --texto: #14181f; --suave: #5b6573; --linha: #e1e5ea;
+    --marca: #2457d6; --marca-texto: #ffffff; --ok: #12805c; --alerta: #b45309; --erro: #b42318;
+    --raio: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0e1116; --card: #171b22; --texto: #eef1f5; --suave: #9aa5b4; --linha: #2a313c;
+            --marca: #6b93ff; --marca-texto: #0b1020; --ok: #4cc9a0; --alerta: #f0a94a; --erro: #ff8a7a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--texto);
+         font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  h1 { font-size: 1.25rem; margin: 0; }
+  h2 { font-size: 1rem; margin: 28px 0 10px; color: var(--suave); text-transform: uppercase; letter-spacing: .04em; }
+  .saldo { background: var(--card); border: 1px solid var(--linha); border-radius: 999px; padding: 6px 14px; font-weight: 600; white-space: nowrap; }
+  .saldo.neg { color: var(--erro); } .saldo.pos { color: var(--ok); }
+  .card { background: var(--card); border: 1px solid var(--linha); border-radius: var(--raio); padding: 14px; margin-bottom: 14px; }
+  .card h3 { margin: 0 0 2px; font-size: 1.05rem; }
+  .meta { color: var(--suave); font-size: .875rem; margin-bottom: 10px; }
+  video.principal { width: 100%; border-radius: 10px; background: #000; aspect-ratio: 16/9; }
+  fieldset { border: 0; padding: 0; margin: 14px 0 0; min-width: 0; }
+  legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
+  .opcao { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--linha);
+           border-radius: 10px; margin-bottom: 8px; cursor: pointer; min-height: 44px; }
+  .opcao:has(input:checked) { border-color: var(--marca); box-shadow: 0 0 0 1px var(--marca) inset; }
+  .opcao input { margin-top: 3px; accent-color: var(--marca); }
+  .thumbs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+  .thumb { position: relative; border: 2px solid var(--linha); border-radius: 10px; overflow: hidden; cursor: pointer; background: var(--bg); aspect-ratio: 16/9; }
+  .thumb:has(input:checked) { border-color: var(--marca); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb input { position: absolute; top: 8px; left: 8px; width: 22px; height: 22px; accent-color: var(--marca); }
+  .shorts { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x proximity; }
+  .short { flex: 0 0 150px; scroll-snap-align: start; }
+  .short video { width: 150px; aspect-ratio: 9/16; border-radius: 10px; background: #000; display: block; }
+  .short span { display: block; font-size: .8rem; color: var(--suave); margin-top: 4px; }
+  label.campo { display: block; font-weight: 600; margin-top: 14px; }
+  input[type=datetime-local] { width: 100%; font: inherit; padding: 12px; margin-top: 6px; border-radius: 10px;
+         border: 1px solid var(--linha); background: var(--bg); color: var(--texto); min-height: 48px; }
+  button.aprovar { width: 100%; margin-top: 16px; min-height: 52px; border: 0; border-radius: 12px; font: inherit; font-weight: 700;
+         background: var(--marca); color: var(--marca-texto); cursor: pointer; }
+  button.aprovar:disabled { opacity: .55; cursor: default; }
+  .msg { margin-top: 10px; font-size: .9rem; min-height: 1.2em; }
+  .msg.erro { color: var(--erro); } .msg.ok { color: var(--ok); }
+  .vazio { color: var(--suave); text-align: center; padding: 28px 8px; }
+  .linha { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--linha); font-size: .92rem; }
+  .linha:last-child { border-bottom: 0; }
+  .selo { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; align-self: start; }
+  .s-aguardando_aprovacao, .s-pausado { color: var(--alerta); } .s-agendado_no_canal { color: var(--ok); }
+  .s-falhou { color: var(--erro); } .s-agendado, .s-em_producao, .s-aprovado { color: var(--suave); }
+  .sem-midia { color: var(--suave); font-size: .85rem; padding: 14px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🏭 Fábrica de Vídeos</h1>
+    <div id="saldo" class="saldo" title="Saldo da empresa no jogo">—</div>
+  </header>
+
+  <h2 id="titulo-pendentes">Para aprovar</h2>
+  <div id="pendentes"></div>
+
+  <h2>Na fábrica</h2>
+  <div id="fabrica" class="card"></div>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, ...filhos) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") n.className = v; else if (k === "texto") n.textContent = v; else n[k] = v;
+  }
+  for (const f of filhos) n.append(f);
+  return n;
+};
+const ROTULOS = { agendado: "na agenda", em_producao: "produzindo", pausado: "pausado (retoma sozinho)",
+  aguardando_aprovacao: "aguardando você", aprovado: "aprovado", agendado_no_canal: "agendado no canal", falhou: "falhou" };
+
+let estado = null;
+const cartoes = new Map(); // id -> elemento (preserva o que você já escolheu quando a lista atualiza)
+
+async function api(caminho, opcoes = {}) {
+  const r = await fetch(caminho, { credentials: "same-origin", ...opcoes });
+  if (r.status === 401) { document.body.textContent = "Acesso negado. Abra o link com a chave (?k=...)."; throw new Error("401"); }
+  const dados = await r.json();
+  if (!r.ok) throw new Error(dados.erro || r.statusText);
+  return dados;
+}
+
+function sugestaoDeHorario() {
+  const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(18, 0, 0, 0);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function cartao(v) {
+  const nome = "g" + v.id;
+  const msg = el("div", { class: "msg", role: "status" });
+  const botao = el("button", { class: "aprovar", type: "button", texto: "Aprovar e agendar" });
+  const horario = el("input", { type: "datetime-local", value: sugestaoDeHorario(), id: "h" + v.id });
+
+  const titulos = el("fieldset", {}, el("legend", { texto: "Título" }));
+  v.titulos.forEach((t, i) => {
+    const r = el("input", { type: "radio", name: nome + "t", value: i, checked: i === 0 });
+    titulos.append(el("label", { class: "opcao" }, r, el("span", { texto: t })));
+  });
+
+  const thumbs = el("fieldset", {}, el("legend", { texto: "Thumbnail" }));
+  const grade = el("div", { class: "thumbs" });
+  v.thumbnails.forEach((u, i) => {
+    const r = el("input", { type: "radio", name: nome + "i", value: i, checked: i === 0, ariaLabel: "Thumbnail " + (i + 1) });
+    const img = el("img", { src: u, alt: "Thumbnail " + (i + 1), loading: "lazy" });
+    img.onerror = () => img.replaceWith(el("div", { class: "sem-midia", texto: "(sem imagem)" }));
+    grade.append(el("label", { class: "thumb" }, img, r));
+  });
+  thumbs.append(grade);
+
+  const corpo = [el("h3", { texto: v.tema }), el("div", { class: "meta", texto: `${v.canal} · custo ${v.custo.toFixed(2)}` })];
+  const player = el("video", { class: "principal", controls: true, preload: "metadata", playsInline: true, src: v.video });
+  player.onerror = () => player.replaceWith(el("div", { class: "sem-midia", texto: "(vídeo indisponível)" }));
+  corpo.push(player, titulos, thumbs);
+
+  if (v.shorts.length) {
+    const lista = el("div", { class: "shorts" });
+    v.shorts.forEach((s) => lista.append(el("div", { class: "short" },
+      el("video", { controls: true, preload: "none", playsInline: true, src: s.url }), el("span", { texto: s.titulo }))));
+    corpo.push(el("fieldset", {}, el("legend", { texto: `Shorts (${v.shorts.length}) — sobem junto` }), lista));
+  }
+  corpo.push(el("label", { class: "campo", htmlFor: "h" + v.id, texto: `Publicar em (${estado.fuso})` }), horario, botao, msg);
+
+  const raiz = el("section", { class: "card" }, ...corpo);
+  botao.onclick = async () => {
+    msg.className = "msg"; msg.textContent = "";
+    if (!horario.value) { msg.className = "msg erro"; msg.textContent = "Escolha o horário."; return; }
+    botao.disabled = true;
+    try {
+      await api("/api/aprovar", { method: "POST", headers: { "Content-Type": "application/json", "X-Fabrica": "1" },
+        body: JSON.stringify({ video: v.id,
+          titulo: +raiz.querySelector(`input[name="${nome}t"]:checked`).value,
+          thumbnail: +raiz.querySelector(`input[name="${nome}i"]:checked`).value,
+          publicar_em: horario.value }) });
+      msg.className = "msg ok"; msg.textContent = "Aprovado! A fábrica sobe e agenda na próxima batida.";
+      setTimeout(atualizar, 1200);
+    } catch (e) { msg.className = "msg erro"; msg.textContent = e.message; botao.disabled = false; }
+  };
+  return raiz;
+}
+
+function desenhar() {
+  const s = $("saldo");
+  s.textContent = `🪙 ${estado.saldo.toFixed(2)}`;
+  s.className = "saldo " + (estado.saldo < 0 ? "neg" : "pos");
+
+  $("titulo-pendentes").textContent = `Para aprovar (${estado.pendentes.length})`;
+  const area = $("pendentes");
+  const ids = new Set(estado.pendentes.map((v) => v.id));
+  for (const [id, no] of cartoes) if (!ids.has(id)) { no.remove(); cartoes.delete(id); }
+  for (const v of estado.pendentes) if (!cartoes.has(v.id)) { const no = cartao(v); cartoes.set(v.id, no); area.append(no); }
+  const vazio = area.querySelector(".vazio");
+  if (!estado.pendentes.length && !vazio) area.append(el("div", { class: "vazio", texto: "Nada esperando você. A fábrica está trabalhando. 🎬" }));
+  if (estado.pendentes.length && vazio) vazio.remove();
+
+  const f = $("fabrica");
+  f.replaceChildren();
+  if (!estado.videos.length) f.append(el("div", { class: "vazio", texto: "Nenhum vídeo na agenda ainda." }));
+  for (const v of estado.videos) {
+    const detalhe = v.retomar_em ? ` · retoma ${v.retomar_em.replace("T", " ").slice(5, 16)}` : "";
+    f.append(el("div", { class: "linha" },
+      el("div", {}, el("strong", { texto: v.tema }), el("div", { class: "meta", texto: `${v.canal} · ${v.producao_em.replace("T", " ").slice(5, 16)}${detalhe}` + (v.erro ? ` · ${v.erro}` : "") })),
+      el("span", { class: "selo s-" + v.status, texto: ROTULOS[v.status] || v.status })));
+  }
+}
+
+async function atualizar() {
+  try { estado = await api("/api/estado"); desenhar(); } catch (e) { if (e.message !== "401") console.error(e); }
+}
+atualizar();
+setInterval(atualizar, 30000);
+</script>
+</body>
+</html>
