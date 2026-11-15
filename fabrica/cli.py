@@ -17,8 +17,19 @@ from .provedores.falso import ProvedorFalso, PublicadorFalso
 def _maestro(args: argparse.Namespace) -> Maestro:
     armazem = Armazem(args.dados)
     canais = [Canal.de_dict(c) for c in json.loads(Path(args.canais).read_text(encoding="utf-8"))]
-    # Troque os falsos pelos provedores reais (LLM, TTS, imagem, vídeo, YouTube) quando existirem.
-    return Maestro(armazem, Pipeline(ProvedorFalso(), armazem), canais, PublicadorFalso())
+    return Maestro(armazem, Pipeline(_provedor(args), armazem), canais, PublicadorFalso())
+
+
+def _provedor(args: argparse.Namespace):
+    if args.provedor == "real":
+        from .config import Config, ErroDeConfiguracao
+        from .provedores.real import ProvedorReal
+
+        try:
+            return ProvedorReal(Config.do_ambiente())
+        except (ErroDeConfiguracao, ImportError) as erro:
+            raise SystemExit(f"provedor real indisponível: {erro}")
+    return ProvedorFalso()
 
 
 def _agora(texto: str | None) -> datetime:
@@ -29,6 +40,8 @@ def principal(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="fabrica", description="Fábrica de vídeos com IA")
     p.add_argument("--dados", default="dados", help="pasta do estado (padrão: dados)")
     p.add_argument("--canais", default="canais.example.json", help="arquivo de canais")
+    p.add_argument("--provedor", choices=["falso", "real"], default="falso",
+                   help="falso = simulação sem custo; real = Claude + voz + imagem + ffmpeg (veja .env.example)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("agenda", help="monta a agenda de um dia")

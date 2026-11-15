@@ -5,6 +5,9 @@ description = "Fábrica de vídeos com IA: agenda, produz, pede aprovação e pu
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+real = ["anthropic>=1.0"]
+
 [project.scripts]
 fabrica = "fabrica.cli:principal"
 

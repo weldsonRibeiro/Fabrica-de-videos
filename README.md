@@ -30,11 +30,13 @@ fabrica/
 ├── modelos.py      # Canal, Vídeo, Etapas, Status
 ├── maestro.py      # agenda do dia (+ do dia seguinte à noite), relógio da fábrica, aprovação, publicação
 ├── pipeline.py     # pesquisa → roteiro → narração → cenas → montagem → thumbnail, com checkpoint
+├── config.py       # configuração por variáveis de ambiente
 ├── jogo.py         # carteira: vídeo = despesa, view = moeda (idempotente)
 ├── armazem.py      # estado em JSON, escrita atômica (sobrevive a travas e reinícios)
 ├── cli.py          # linha de comando
 └── provedores/
     ├── base.py     # contratos: Provedor, Publicador, LimiteAtingido
+    ├── real.py     # provedor real (compõe claude.py, openai_http.py, montagem.py)
     └── falso.py    # provedores de mentirinha para demo e testes
 ```
 
@@ -54,6 +56,31 @@ python -m fabrica views 2026-11-16-historias 5000   # views viram moedas
 python -m fabrica carteira                 # saldo da empresa
 ```
 
+### Provedores reais (v0.2)
+
+```bash
+pip install '.[real]'                 # SDK do Claude (único extra); ffmpeg precisa estar no PATH
+cp .env.example .env                  # preencha ANTHROPIC_API_KEY e OPENAI_API_KEY
+set -a; source .env; set +a
+python -m fabrica --provedor real tick
+```
+
+| Etapa | Quem faz | Como |
+|---|---|---|
+| Pesquisa | Claude | busca na web (`web_search`), dossiê com fontes |
+| Roteiro | Claude | saída estruturada (JSON): cenas, 3 títulos, descrição, 3 ideias de thumbnail, 3 shorts |
+| Narração | OpenAI TTS | um áudio por cena (a duração real de cada áudio dita o tempo da cena) |
+| Cenas | OpenAI Images | uma imagem por cena |
+| Montagem | ffmpeg | zoom lento por cena → vídeo 1080p; shorts 9:16 com fundo desfocado |
+| Thumbnail | OpenAI Images + ffmpeg | 3 opções, 1280×720 JPG |
+
+- **Modelo do Claude**: `claude-opus-5-5` por padrão; troque com `FABRICA_MODELO` (ex.: `claude-sonnet-5-5` para gastar menos).
+  O *fallback* server-side do Claude vem ligado (se uma resposta for recusada, outro modelo refaz); desligue com `FABRICA_SEM_FALLBACK=1`.
+- **Limites**: 429 do Claude ou da OpenAI viram pausa com horário de retomada (respeita `retry-after`).
+- **Sem pagar duas vezes**: áudios e imagens já gerados ficam em disco e não são refeitos na retomada; o gasto parcial de uma etapa interrompida é guardado e somado quando ela termina.
+- **Custos são estimativas** (tokens × tabela de preços do Claude; voz e imagem por valores configuráveis em `FABRICA_CUSTO_VOZ_MIN` e `FABRICA_CUSTO_IMAGEM`). Em USD; use `FABRICA_COTACAO` para converter.
+- ⚠️ A integração com Claude/OpenAI foi testada com clientes simulados e o ffmpeg com arquivos de verdade; **ainda não rodou contra as APIs reais** (não havia chaves no ambiente de desenvolvimento). Rode o primeiro vídeo acompanhando.
+
 Os canais ficam em [`canais.example.json`](canais.example.json) (nome, nicho, horário de início e
 lista de temas).
 
@@ -65,7 +92,7 @@ vídeo vira `pausado` com um `retomar_em`; a próxima batida do maestro depois d
 
 ## Roadmap
 
-- [ ] **Provedores reais** — LLM (pesquisa/roteiro), TTS (narração), imagem (cenas/thumbnails), montagem (ffmpeg)
+- [x] **Provedores reais** — Claude (pesquisa/roteiro), TTS, imagem, montagem (ffmpeg) — *falta validar contra as APIs reais*
 - [ ] **Publicação real** — YouTube Data API: upload agendado + shorts
 - [ ] **Painel de aprovação** — app/web mobile para escolher título, thumbnail e horário em 1 toque
 - [ ] **Notificação** — avisar no celular quando um vídeo ficar pronto

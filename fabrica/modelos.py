@@ -60,6 +60,7 @@ class Video:
     canal_id: str
     tema: str
     producao_em: datetime
+    nicho: str = ""
     status: Status = Status.AGENDADO
     artefatos: dict[str, dict[str, Any]] = field(default_factory=dict)  # saída de cada etapa
     tentativas: dict[str, int] = field(default_factory=dict)
@@ -76,6 +77,7 @@ class Video:
             "id": self.id,
             "canal_id": self.canal_id,
             "tema": self.tema,
+            "nicho": self.nicho,
             "producao_em": self.producao_em.isoformat(),
             "status": self.status.value,
             "artefatos": self.artefatos,
@@ -96,6 +98,7 @@ class Video:
             canal_id=d["canal_id"],
             tema=d["tema"],
             producao_em=datetime.fromisoformat(d["producao_em"]),
+            nicho=d.get("nicho", ""),
             status=Status(d["status"]),
             artefatos=d.get("artefatos", {}),
             tentativas=d.get("tentativas", {}),

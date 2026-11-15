@@ -74,4 +74,5 @@ def montar_pacote(video: Video) -> dict:
         "shorts": a[Etapa.MONTAGEM.value]["shorts"],
         "thumbnails": a[Etapa.THUMBNAIL.value]["thumbnails"],
         "titulos": a[Etapa.ROTEIRO.value]["titulos"],
+        "descricao": a[Etapa.ROTEIRO.value].get("descricao", ""),
     }
