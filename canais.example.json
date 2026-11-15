@@ -1,0 +1,16 @@
+[
+  {
+    "id": "historias",
+    "nome": "Histórias Perdidas",
+    "nicho": "curiosidades históricas",
+    "inicio_producao": "05:30",
+    "temas": ["A biblioteca de Alexandria", "O mistério de Machu Picchu", "A queda de Constantinopla"]
+  },
+  {
+    "id": "financas",
+    "nome": "Dinheiro Sem Medo",
+    "nicho": "educação financeira",
+    "inicio_producao": "07:00",
+    "temas": ["Como funciona o Tesouro Direto", "Juros compostos na prática", "Reserva de emergência"]
+  }
+]
