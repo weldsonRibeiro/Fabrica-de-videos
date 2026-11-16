@@ -22,7 +22,8 @@ ENV PYTHONUNBUFFERED=1 \
     FABRICA_CANAIS=/data/canais.json \
     FABRICA_FUSO=America/Sao_Paulo
 
-VOLUME /data
+# O estado fica em /data: monte um volume ali (docker compose e Railway Volumes fazem isso;
+# o Railway não aceita a instrução VOLUME no Dockerfile).
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/saude' % os.environ.get('PORT','8080'), timeout=3)"
