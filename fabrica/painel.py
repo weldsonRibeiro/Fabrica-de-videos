@@ -10,7 +10,7 @@ import json
 import mimetypes
 import re
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -23,7 +23,9 @@ from .jogo import Carteira
 from .maestro import aprovar
 from .modelos import ETAPAS, Canal, Status, Video
 
-PAGINA = Path(__file__).parent / "web" / "index.html"
+WEB = Path(__file__).parent / "web"
+PAGINA = WEB / "index.html"
+ESTATICOS = {f"/{n}": (n, "text/javascript; charset=utf-8") for n in ("escritorio.js", "escritorio-motor.js")}  # só estes, nada de listar a pasta
 COOKIE = "fabrica_chave"
 PAGINA_SEM_CHAVE = """<!doctype html><html lang="pt-BR"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark">
@@ -46,7 +48,7 @@ def _etapa_atual(video: Video) -> str | None:
 def _json(video: Video, canais: dict[str, Canal], saida: Path) -> dict:
     nome = canais[video.canal_id].nome if video.canal_id in canais else video.canal_id
     base = {
-        "id": video.id, "tema": video.tema, "canal": nome, "status": video.status.value,
+        "id": video.id, "tema": video.tema, "canal": nome, "canal_id": video.canal_id, "status": video.status.value,
         "custo": video.custo, "producao_em": video.producao_em.isoformat(),
         "retomar_em": video.retomar_em.isoformat() if video.retomar_em else None, "erro": video.erro,
         "etapa": _etapa_atual(video), "etapas_feitas": len(video.artefatos), "etapas_total": len(ETAPAS),
@@ -73,6 +75,7 @@ class Painel:
             raise ValueError("a chave do painel precisa ter pelo menos 16 caracteres")
         self.armazem, self.chave, self.saida, self.fuso = armazem, chave, saida.resolve(), fuso
         self.canais = {c.id: c for c in canais}
+        self.ultimo_tick: str | None = None  # preenchido pelo maestro em segundo plano (servir --com-maestro)
         self.trava = threading.Lock()  # dois toques seguidos em "Aprovar" não se atropelam
         # O tick em segundo plano não precisa dessa trava: ele nunca mexe em vídeos AGUARDANDO_APROVACAO.
 
@@ -86,9 +89,16 @@ class Painel:
         for o in outros:  # a lista "na fábrica" não precisa carregar as mídias
             for k in ("titulos", "descricao", "video", "thumbnails", "shorts"):
                 o.pop(k, None)
+        agora = agora_local()
+        hoje = agora.date()
+        gasto_hoje = round(sum(v.custo for v in videos if v.producao_em.date() == hoje), 2)
+        desde = agora - timedelta(hours=24)
+        ganho_24h = sum(h["valor"] for h in carteira.historico
+                        if h.get("valor", 0) > 0 and h.get("t") and datetime.fromisoformat(h["t"]) >= desde)
         canais = [{"id": c.id, "nome": c.nome, "nicho": c.nicho, "inicio": c.inicio_producao,
                    "temas": len(c.temas), "perfil": c.perfil.para_dict()} for c in self.canais.values()]
-        return {"canais": canais, "saldo": saldo, "fuso": self.fuso, "agora": agora_local().isoformat(timespec="seconds"), "pendentes": pendentes, "videos": outros,
+        return {"canais": canais, "saldo": saldo, "fuso": self.fuso, "agora": agora.isoformat(timespec="seconds"),
+                "gasto_hoje": gasto_hoje, "ganho_hora": round(ganho_24h / 24, 2), "ultimo_tick": self.ultimo_tick, "pendentes": pendentes, "videos": outros,
                 "historico": list(reversed(carteira.historico[-8:]))}
 
     def aprovar(self, dados: dict) -> None:
@@ -167,6 +177,9 @@ def _fazer_handler(painel: Painel) -> type[BaseHTTPRequestHandler]:
 
             if url.path == "/":
                 return self._responder(200, PAGINA.read_bytes(), "text/html; charset=utf-8")
+            if url.path in ESTATICOS:
+                nome, tipo = ESTATICOS[url.path]
+                return self._responder(200, (WEB / nome).read_bytes(), tipo)
             if url.path == "/api/estado":
                 return self._json(200, painel.estado())
             m = re.fullmatch(r"/media/([\w.-]+)/(video|short|thumb)/(\d+)", url.path)
@@ -243,6 +256,7 @@ def servir(painel: Painel, host: str, porta: int, tick: Callable[[], None] | Non
             while not parar.is_set():
                 try:
                     tick()
+                    painel.ultimo_tick = agora_local().isoformat(timespec="seconds")
                 except Exception as erro:  # noqa: BLE001 — um erro de tick não pode derrubar o painel
                     print(f"[maestro] erro no tick: {erro}", flush=True)
                 parar.wait(intervalo)

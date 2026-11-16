@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .armazem import Armazem
+from .fuso import agora_local
 
 MOEDAS_POR_MIL_VIEWS = 10.0
 _ARQUIVO = "carteira.json"
@@ -31,7 +32,7 @@ class Carteira:
             return 0.0
         self.custo_lancado[video_id] = custo_total
         self.saldo = round(self.saldo - delta, 2)
-        self.historico.append({"tipo": "despesa", "video": video_id, "valor": -delta})
+        self.historico.append({"tipo": "despesa", "video": video_id, "valor": -delta, "t": agora_local().isoformat(timespec="seconds")})
         return delta
 
     def registrar_views(self, video_id: str, views_total: int) -> float:
@@ -42,5 +43,5 @@ class Carteira:
         moedas = round(novas / 1000 * MOEDAS_POR_MIL_VIEWS, 2)
         self.views_lancadas[video_id] = views_total
         self.saldo = round(self.saldo + moedas, 2)
-        self.historico.append({"tipo": "views", "video": video_id, "valor": moedas})
+        self.historico.append({"tipo": "views", "video": video_id, "valor": moedas, "t": agora_local().isoformat(timespec="seconds")})
         return moedas

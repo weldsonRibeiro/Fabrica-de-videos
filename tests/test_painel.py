@@ -177,3 +177,56 @@ class TestEscritorioVisual(unittest.TestCase):
             prov = Lento(armazem)
             Pipeline(prov, armazem).rodar(v, datetime(2026, 11, 16, 5, 30))
             self.assertEqual(prov.visto, Status.EM_PRODUCAO)
+
+
+class TestEscritorioPixelArt(TestPainel):
+    """O mapa pixel art: scripts servidos só com chave e os dados que alimentam o HUD."""
+
+    def test_scripts_do_escritorio_exigem_chave_e_so_os_permitidos(self):
+        for nome in ("/escritorio.js", "/escritorio-motor.js"):
+            self.assertEqual(self.pedir(nome)[0], 401, nome)
+        self.entrar()
+        for nome in ("/escritorio.js", "/escritorio-motor.js"):
+            status, h, corpo = self.pedir(nome)
+            self.assertEqual(status, 200)
+            self.assertIn("javascript", h["Content-Type"])
+            self.assertIn(b"use strict", corpo)
+        self.assertEqual(self.pedir("/index.html")[0], 404)       # a pasta web não é listada
+        self.assertEqual(self.pedir("/../painel.py")[0], 404)
+
+    def test_estado_traz_o_que_o_hud_e_os_agentes_usam(self):
+        self.entrar()
+        d = json.loads(self.pedir("/api/estado")[2])
+        self.assertEqual(d["gasto_hoje"], 6.5)                    # custo do vídeo produzido hoje
+        self.assertEqual(d["ganho_hora"], 0.0)                    # ainda sem views
+        self.assertIn("ultimo_tick", d)
+        self.assertEqual(d["videos"][0]["canal_id"], "a")         # o motor liga vídeo → sala pelo canal_id
+        self.assertEqual(d["pendentes"][0]["canal_id"], "a")
+
+    def test_ganho_por_hora_conta_so_as_ultimas_24h(self):
+        from fabrica.fuso import agora_local
+        from fabrica.jogo import Carteira
+
+        c = Carteira.carregar(self.armazem)
+        c.historico += [{"tipo": "views", "video": self.id, "valor": 48.0, "t": agora_local().isoformat(timespec="seconds")},
+                        {"tipo": "views", "video": self.id, "valor": 999.0, "t": (agora_local() - timedelta(days=3)).isoformat(timespec="seconds")}]
+        c.salvar(self.armazem)
+        self.entrar()
+        self.assertEqual(json.loads(self.pedir("/api/estado")[2])["ganho_hora"], 2.0)   # 48 / 24h; o de 3 dias atrás não entra
+
+    def test_javascript_do_mapa_e_sintaticamente_valido(self):
+        import shutil
+        import subprocess
+
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("sem node")
+        web = Path(__file__).resolve().parent.parent / "fabrica" / "web"
+        for arq in ("escritorio.js", "escritorio-motor.js"):
+            r = subprocess.run([node, "--check", str(web / arq)], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+
+# a subclasse herda os testes da base; evita rodá-los duas vezes
+for _nome in [n for n in dir(TestPainel) if n.startswith("test_")]:
+    setattr(TestEscritorioPixelArt, _nome, None)
