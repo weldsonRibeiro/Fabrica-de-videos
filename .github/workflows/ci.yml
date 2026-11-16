@@ -24,10 +24,14 @@ jobs:
         run: docker build -t fabrica:ci .
       - name: A imagem sobe e responde no /saude
         run: |
-          docker run -d --name f -p 8080:8080 -e FABRICA_PAINEL_CHAVE=chave-de-teste-bem-longa-123 fabrica:ci
+          docker run -d --name fabrica-ci -p 8080:8080 -e FABRICA_PAINEL_CHAVE=chave-de-teste-bem-longa-123 fabrica:ci
           for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:8080/saude && exit 0
+            if curl -fsS http://127.0.0.1:8080/saude; then
+              echo; echo "processo roda como: $(docker exec fabrica-ci ps -o user= -C python | head -1)"
+              docker exec fabrica-ci ps -o user= -C python | grep -qx fabrica
+              exit 0
+            fi
             sleep 1
           done
-          docker logs f
+          docker logs fabrica-ci
           exit 1
