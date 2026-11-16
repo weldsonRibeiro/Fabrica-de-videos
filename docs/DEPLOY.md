@@ -87,9 +87,9 @@ docker compose logs -f fabrica   # acompanhar
 
 ## C. Railway
 
-1. railway.com → **New Project → Deploy from GitHub repo** → `Fabrica-de-videos` (a branch com este código). O `railway.json` já manda construir pelo `Dockerfile` e usar `/saude` como verificação.
-2. **Variables**: `FABRICA_PAINEL_CHAVE`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN_<CANAL>`, `FABRICA_PROVEDOR=real`, `FABRICA_PUBLICADOR=youtube`, `FABRICA_FUSO=America/Sao_Paulo` e `FABRICA_CANAIS_JSON` (o conteúdo do `canais.json`). A porta (`PORT`) o Railway define sozinho.
-3. **Volume**: adicione um volume ao serviço montado em **`/data`** — sem ele, tudo some a cada deploy.
+1. railway.com → **New Project → Deploy from GitHub repo** → `Fabrica-de-videos` (a branch com este código). Se aparecer *"User does not have access to the repo"*, instale o app do Railway no GitHub com acesso a este repositório (GitHub → Settings → Applications → Railway → Configure). O `railway.json` já manda construir pelo `Dockerfile` e usar `/saude` como verificação.
+2. **Variables**: `FABRICA_PAINEL_CHAVE`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN_<CANAL>`, `FABRICA_PROVEDOR=real`, `FABRICA_PUBLICADOR=youtube`, `FABRICA_FUSO=America/Sao_Paulo` e `FABRICA_CANAIS_JSON` (o conteúdo do `canais.json`). Defina também **`PORT=8080`** (e, em *Networking*, o domínio apontando para a porta **8080**): assim a porta do app e a do domínio sempre batem.
+3. **Volume**: adicione um volume ao serviço montado em **`/data`** — sem ele, tudo some a cada deploy. (O Railway não aceita `VOLUME` dentro do Dockerfile; por isso o volume é criado no próprio Railway.)
 4. **Settings → Networking → Generate Domain**. Já vem com HTTPS. Abra `https://SEU-DOMINIO/?k=SUA_CHAVE`.
 5. Mantenha **uma réplica só** (o maestro não foi feito para rodar em duas ao mesmo tempo).
 
