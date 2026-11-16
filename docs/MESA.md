@@ -1,0 +1,70 @@
+# Mesa de operações (Bitcoin e mercado financeiro) — simulação
+
+> **Aviso.** Isto é um laboratório de pesquisa e **simulação**. Não é recomendação financeira, não garante lucro e **não envia ordens a nenhuma corretora**. Operar mercados envolve risco real de perda; a maioria das estratégias que parece boa no papel perde dinheiro quando enfrenta custos, atraso e dados novos.
+
+## A ideia
+
+Vários **agentes leitores** olham o mercado de jeitos diferentes e cada um devolve uma **probabilidade** de o preço estar mais alto daqui a N velas. Um **agregador** junta as leituras e mede se a probabilidade é **honesta** (calibrada). Um módulo de **risco** decide se opera, quanto e quando parar. Tudo passa por um **backtest** que não olha o futuro, desconta custos e diz com franqueza quando **não há evidência de vantagem**.
+
+```
+velas ──▶ leitores (tendência · momentum · reversão · fluxo/volume · notícias · regime[veto])
+              │   cada um: probabilidade + confiança
+              ▼
+        agregador (média simples  ×  logística treinada walk-forward, probabilidades encolhidas)
+              │   métricas: Brier, log-loss, tabela de calibração
+              ▼
+        risco: margem de probabilidade · valor esperado − custos > 0 · Kelly fracionado · stop ·
+               limite de perda do dia · kill switch por drawdown · veto do regime
+              ▼
+        ordem SIMULADA, executada na abertura da vela seguinte (com taxa e derrapagem)
+```
+
+## Como usar
+
+```bash
+# 1) dados reais do Bitcoin (rode no SEU computador; a Binance pública não pede chave, mas algumas redes a bloqueiam)
+python -m mesa baixar --simbolo BTCUSDT --intervalo 1h --desde 2021-01-01 --saida btc.csv
+
+# 2) backtest com custos, contra linhas de base (média simples e cada leitor sozinho)
+python -m mesa backtest --dados btc.csv --horizonte 24
+
+# 3) o protocolo certo: ajuste SEM espiar o período final e teste UMA vez no que o modelo nunca viu
+python -m mesa backtest --dados btc.csv --ate 2024-06-30      # onde você mexe e aprende
+python -m mesa backtest --dados btc.csv --de   2024-07-01     # teste final: olhe uma vez só
+
+# 4) ao vivo, SIMULADO: gera o sinal da última vela e guarda no diário; depois confere contra o que o preço fez
+python -m mesa sinal   --dados btc.csv --diario diario.jsonl
+python -m mesa avaliar --dados btc.csv --diario diario.jsonl
+```
+
+Sem dados reais à mão, `python -m mesa sintetico --modo ruido|momentum|regimes --saida x.csv` gera preços **inventados** para testar a estrutura. Eles **não são o mercado**.
+
+## Como ler o resultado
+
+- **IC 95% por operação**: o intervalo (por *bootstrap*) do retorno médio por operação. "Evidência de vantagem" só aparece com **≥ 30 operações** e o intervalo **inteiro acima de zero**. É evidência, **não prova**.
+- **Brier / log-loss**: chutar 50% dá Brier 0,2500 e log-loss 0,6931. Se o agregador não fica abaixo disso **fora da amostra**, ele não sabe nada.
+- **Tabela de calibração**: quando diz 70%, tem de subir ~70% das vezes. Se não, a probabilidade é enganosa.
+- Sempre compare com **buy & hold** e com as **linhas de base**: se a média simples ou um único leitor faz o mesmo, a complexidade não se paga.
+
+## O que já foi verificado (com preços inventados)
+
+- Em **ruído puro** (sem vantagem nenhuma), o sistema **não encontra vantagem** em nenhuma das sementes testadas.
+- Com uma **vantagem real, mas pequena**, ele a detecta quando os custos são baixos — e **a vantagem desaparece com custos realistas** (taxa 0,10% + derrapagem 0,05% por lado). Isso é o comportamento esperado e honesto.
+- As leituras **não mudam** quando o futuro é alterado (teste automático), o treino só usa amostras cujo resultado já era conhecido, e o stop, o limite do dia e o kill switch estão cobertos por testes.
+
+Isto valida a **estrutura**. **Não** diz nada sobre se existe vantagem no Bitcoin real: isso só os dados reais e o paper trading respondem.
+
+## Armadilhas que o sistema tenta evitar (e você também deve)
+
+1. **Olhar o futuro** (lookahead): cada leitor só recebe o passado; a ordem entra na vela seguinte.
+2. **Ajustar até dar certo**: por isso o protocolo `--ate` / `--de`. Cada vez que você olha o período de teste e muda algo, ele deixa de ser teste.
+3. **Custos esquecidos**: taxa e derrapagem entram nos dois lados.
+4. **Muitos testes, uma vitória por sorte**: testar 20 variações e ficar com a melhor quase sempre acha "vantagem" no ruído.
+5. **Dado ruim**: o carregador recusa tempo repetido e preço impossível.
+
+## O que falta (por ordem)
+
+1. **Dados reais** e a primeira rodada do protocolo acima.
+2. **Mais leitores**: derivativos de cripto (funding, open interest), livro de ofertas, e o leitor de **notícias** com um classificador de manchetes datadas (a interface já existe e já não enxerga o futuro).
+3. **Paper trading contínuo**: o comando `sinal` periódico (como o maestro da fábrica), com painel.
+4. **Execução em corretora**, só depois de semanas/meses de paper trading que **vençam uma estratégia simples depois de custos**: capital pequeno, limites fixos no código e **aprovação humana por ordem**. Fora do escopo por enquanto.

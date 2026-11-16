@@ -169,6 +169,15 @@ vídeo vira `pausado` com um `retomar_em`; a próxima batida do maestro depois d
 
 Detalhes de arquitetura e do design do jogo em [`docs/`](docs/).
 
+## Mesa de operações (Bitcoin) — laboratório de simulação
+
+Módulo separado (`mesa/`) para pesquisar operações com **agentes leitores, probabilidades calibradas e risco**, só em **simulação** (não envia ordens a corretoras). Veja [`docs/MESA.md`](docs/MESA.md).
+
+```bash
+python -m mesa sintetico --modo ruido --saida x.csv && python -m mesa backtest --dados x.csv   # testa a estrutura
+python -m mesa baixar --saida btc.csv && python -m mesa backtest --dados btc.csv                # com Bitcoin real (no seu computador)
+```
+
 ## Origem da ideia
 
 Ideia vinda de um seguidor — o relato de "um dia inteiro da fábrica de vídeos com IA" que inspirou

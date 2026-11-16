@@ -12,7 +12,7 @@ real = ["anthropic>=1.0"]
 fabrica = "fabrica.cli:principal"
 
 [tool.setuptools]
-packages = ["fabrica", "fabrica.provedores"]
+packages = ["fabrica", "fabrica.provedores", "mesa"]
 
 [tool.setuptools.package-data]
 fabrica = ["web/*.html", "web/*.js"]
