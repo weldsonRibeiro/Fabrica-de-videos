@@ -134,3 +134,46 @@ class TestPainel(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestEscritorioVisual(unittest.TestCase):
+    """Os dados que alimentam o escritório: etapa atual de cada vídeo, extrato e o modo demo."""
+
+    def test_demo_cobre_todos_os_estados_e_a_etapa_certa(self):
+        from fabrica.demo import CANAIS_DEMO, criar
+
+        with tempfile.TemporaryDirectory() as tmp:
+            armazem = Armazem(Path(tmp) / "dados")
+            saida = Path(tmp) / "saida"
+            criar(armazem, saida, datetime(2026, 11, 16, 10, 0))
+            canais = [Canal.de_dict(c) for c in CANAIS_DEMO]
+            estado = Painel(armazem, canais, CHAVE, saida).estado()
+
+            por_tema = {v["tema"]: v for v in estado["videos"]}
+            self.assertEqual({v["status"] for v in estado["videos"]},
+                             {"agendado", "em_producao", "pausado", "aguardando_aprovacao", "agendado_no_canal"})
+            self.assertEqual(por_tema["Buracos negros"]["etapa"], "cenas")        # 3 etapas prontas → desenhando as cenas
+            self.assertEqual(por_tema["A história do Mario"]["etapa"], "montagem")  # pausado onde parou
+            self.assertIsNone(por_tema["A biblioteca de Alexandria"]["etapa"])    # já pronto: não está na linha
+            self.assertEqual(len(estado["pendentes"]), 1)
+            self.assertEqual(estado["historico"][0]["tipo"], "views")             # mais recente primeiro
+            self.assertEqual(estado["pendentes"][0]["shorts"][0]["titulo"], "O que são juros compostos?")
+            self.assertTrue(Path(saida / estado["pendentes"][0]["id"] / "video.mp4").exists())
+
+    def test_pipeline_salva_em_producao_antes_da_primeira_etapa(self):
+        class Lento:
+            def __init__(self, armazem):
+                self.armazem, self.visto = armazem, None
+
+            def executar(self, etapa, video):
+                self.visto = self.armazem.carregar_video(video.id).status
+                raise RuntimeError("para aqui")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            armazem = Armazem(tmp)
+            from fabrica.modelos import Video
+
+            v = Video("v", "c", "t", datetime(2026, 11, 16, 5, 30))
+            prov = Lento(armazem)
+            Pipeline(prov, armazem).rodar(v, datetime(2026, 11, 16, 5, 30))
+            self.assertEqual(prov.visto, Status.EM_PRODUCAO)

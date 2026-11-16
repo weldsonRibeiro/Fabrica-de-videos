@@ -20,11 +20,18 @@ from urllib.parse import parse_qs, urlparse
 from .armazem import Armazem
 from .jogo import Carteira
 from .maestro import aprovar
-from .modelos import Canal, Status, Video
+from .modelos import ETAPAS, Canal, Status, Video
 
 PAGINA = Path(__file__).parent / "web" / "index.html"
 COOKIE = "fabrica_chave"
 TAMANHO_BLOCO = 1024 * 1024
+
+
+def _etapa_atual(video: Video) -> str | None:
+    """A etapa em andamento (ou onde parou, se pausado): a primeira sem artefato salvo."""
+    if video.status not in (Status.EM_PRODUCAO, Status.PAUSADO):
+        return None
+    return next((e.value for e in ETAPAS if e.value not in video.artefatos), None)
 
 
 def _json(video: Video, canais: dict[str, Canal], saida: Path) -> dict:
@@ -33,6 +40,7 @@ def _json(video: Video, canais: dict[str, Canal], saida: Path) -> dict:
         "id": video.id, "tema": video.tema, "canal": nome, "status": video.status.value,
         "custo": video.custo, "producao_em": video.producao_em.isoformat(),
         "retomar_em": video.retomar_em.isoformat() if video.retomar_em else None, "erro": video.erro,
+        "etapa": _etapa_atual(video), "etapas_feitas": len(video.artefatos), "etapas_total": len(ETAPAS),
     }
     if video.status is Status.AGUARDANDO_APROVACAO:
         p = video.pacote
@@ -62,13 +70,15 @@ class Painel:
     # --- regras (testáveis sem HTTP) ----------------------------------------------------------
     def estado(self) -> dict:
         videos = self.armazem.listar_videos()  # leitura segura: os arquivos são trocados de forma atômica
-        saldo = Carteira.carregar(self.armazem).saldo
+        carteira = Carteira.carregar(self.armazem)
+        saldo = carteira.saldo
         pendentes = [_json(v, self.canais, self.saida) for v in videos if v.status is Status.AGUARDANDO_APROVACAO]
         outros = [_json(v, self.canais, self.saida) for v in reversed(videos)]
         for o in outros:  # a lista "na fábrica" não precisa carregar as mídias
             for k in ("titulos", "descricao", "video", "thumbnails", "shorts"):
                 o.pop(k, None)
-        return {"saldo": saldo, "fuso": self.fuso, "pendentes": pendentes, "videos": outros}
+        return {"saldo": saldo, "fuso": self.fuso, "agora": datetime.now().isoformat(timespec="seconds"), "pendentes": pendentes, "videos": outros,
+                "historico": list(reversed(carteira.historico[-8:]))}
 
     def aprovar(self, dados: dict) -> None:
         try:

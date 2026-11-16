@@ -76,6 +76,8 @@ def principal(argv: list[str] | None = None) -> int:
     s.add_argument("video")
     s.add_argument("total", type=int)
 
+    sub.add_parser("demo", help="cria dados de demonstração (um dia inventado) para ver o painel sem chaves")
+
     s = sub.add_parser("painel", help="painel de aprovação no celular (defina FABRICA_PAINEL_CHAVE)")
     s.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 só atrás de HTTPS/túnel")
     s.add_argument("--porta", type=int, default=8080)
@@ -108,6 +110,13 @@ def principal(argv: list[str] | None = None) -> int:
         ganhou = carteira.registrar_views(args.video, args.total)
         carteira.salvar(armazem)
         print(f"+{ganhou:.2f} moedas")
+    elif args.cmd == "demo":
+        from .demo import CANAIS_DEMO, criar
+
+        criar(armazem, Path(os.environ.get("FABRICA_SAIDA", "saida")))
+        Path(args.canais).write_text(json.dumps(CANAIS_DEMO, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"Dados de demonstração em {args.dados}/ e canais em {args.canais}.\n"
+              f"Agora: FABRICA_PAINEL_CHAVE=<16+ caracteres> python -m fabrica --dados {args.dados} --canais {args.canais} painel")
     elif args.cmd == "painel":
         from .painel import Painel, servir
 

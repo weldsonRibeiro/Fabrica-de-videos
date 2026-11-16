@@ -10,9 +10,11 @@
 
 ## Ideias para evoluir
 
-- **O escritório**: cada etapa do pipeline é um "funcionário/estação" visível — a estante
-  (pesquisa), a mesa (roteiro), a cabine (narração), o quadro (cenas), o computador (montagem).
-  Vídeo em produção = animação acontecendo no escritório.
+- **O escritório** ✅ *(v0.5, aba Escritório do painel)*: cada etapa do pipeline é uma estação — estante
+  (pesquisa), mesa (roteiro), cabine (narração), quadro (cenas), computador (montagem), cavalete
+  (thumbnail) — e cada vídeo em produção é um funcionário que anda entre elas. Próximos passos do
+  visual: decoração/upgrades comprados com moedas, um funcionário por canal fixo, animação de moedas
+  caindo no cofre quando as views entram.
 - **Lojas**: negócios paralelos dentro do jogo que geram renda passiva e financiam a fábrica.
 - **Missões**: tarefas diárias (aprovar X vídeos, bater meta de views) que dão bônus.
 - **Upgrades**: comprar provedores melhores (voz mais natural, mais cenas, mais canais) com as moedas.

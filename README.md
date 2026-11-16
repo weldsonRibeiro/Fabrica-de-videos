@@ -33,6 +33,7 @@ fabrica/
 ├── config.py       # configuração por variáveis de ambiente
 ├── jogo.py         # carteira: vídeo = despesa, view = moeda (idempotente)
 ├── armazem.py      # estado em JSON, escrita atômica (sobrevive a travas e reinícios)
+├── demo.py         # dados de demonstração (um dia inventado)
 ├── painel.py       # painel web de aprovação (+ web/index.html)
 ├── cli.py          # linha de comando
 └── provedores/
@@ -113,6 +114,21 @@ python -m fabrica --provedor real --publicador youtube painel --com-maestro
 - **Segurança**: chave obrigatória (≥ 16 caracteres), cookie `HttpOnly`/`SameSite=Strict`, aprovação exige cabeçalho próprio (anti-CSRF), só serve arquivos de dentro de `saida/`, textos da IA nunca entram como HTML. Escuta em `127.0.0.1`; para abrir no celular fora de casa, publique **atrás de HTTPS** (túnel tipo Cloudflare Tunnel/Tailscale ou proxy reverso) — não exponha a porta em HTTP puro.
 - Vídeo com suporte a `Range` (necessário para tocar no Safari/iOS).
 
+### O escritório (visual do jogo)
+
+```bash
+python -m fabrica --dados dados-demo --canais canais-demo.json demo      # cria um dia inventado (sem chaves, sem gastos)
+FABRICA_PAINEL_CHAVE=<16+ caracteres> python -m fabrica --dados dados-demo --canais canais-demo.json painel
+```
+
+A aba **🏢 Escritório** do painel mostra a fábrica funcionando, com os dados reais:
+
+- **6 estações** = as 6 etapas do pipeline: 📚 Estante (pesquisa), ✍️ Roteiro, 🎙️ Cabine (narração), 🖼️ Quadro (cenas), 🎞️ Montagem, 🎨 Thumbnail. A estação com trabalho em andamento acende; a que está pausada fica tracejada em âmbar.
+- **Cada vídeo em produção é um funcionário** (cor e iniciais do canal) que **anda até a estação da etapa atual**; pausado por limite/erro, ele fica parado "dormindo" (💤) até a hora de retomar.
+- **Agenda do Maestro** na parede (vídeos de hoje, com cor por status), **caixa de aprovação** com o número de vídeos esperando você (toque para ir aprovar) e **cofre** com o saldo de moedas.
+- Abaixo: legenda com o que cada funcionário está fazendo e a barra de progresso, **extrato** da empresa (despesas de produção, moedas de views) e a lista de vídeos.
+- Funciona em modo claro e escuro, respeita "reduzir movimento" e atualiza sozinho a cada 10 s.
+
 Os canais ficam em [`canais.example.json`](canais.example.json) (nome, nicho, horário de início e
 lista de temas).
 
@@ -129,7 +145,8 @@ vídeo vira `pausado` com um `retomar_em`; a próxima batida do maestro depois d
 - [x] **Painel de aprovação** — web mobile para escolher título, thumbnail e horário em 1 toque (falta: recusar/refazer, notificação)
 - [ ] **Notificação** — avisar no celular quando um vídeo ficar pronto
 - [ ] **Métricas reais** — puxar views do canal e converter em moedas automaticamente
-- [ ] **O jogo de verdade** — lojas, missões, escritório visual, upgrades que melhoram a fábrica
+- [x] **Escritório visual** — estações, funcionários, agenda, cofre e extrato (aba Escritório do painel)
+- [ ] **O jogo de verdade** — lojas, missões, upgrades que melhoram a fábrica
 - [ ] **Agenda inteligente** — temas gerados pela própria IA a partir de tendências e desempenho
 - [ ] **Execução contínua** — rodar o maestro num servidor (cron/worker), com logs e alertas
 

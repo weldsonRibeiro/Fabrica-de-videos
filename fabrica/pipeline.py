@@ -31,6 +31,7 @@ class Pipeline:
         video.status = Status.EM_PRODUCAO
         video.retomar_em = None
         video.erro = None
+        self.armazem.salvar_video(video)  # quem olha o painel já vê o vídeo "em produção"
 
         for etapa in ETAPAS:
             if etapa.value in video.artefatos:
