@@ -1,0 +1,15 @@
+.git
+.github
+.env
+.venv
+__pycache__
+*.pyc
+dados
+saida
+dados-demo
+tests
+docs
+*.md
+vercel
+scripts
+.github

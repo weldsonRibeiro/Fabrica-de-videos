@@ -1,0 +1,18 @@
+[project]
+name = "fabrica-de-videos"
+version = "0.1.0"
+description = "Fábrica de vídeos com IA: agenda, produz, pede aprovação e publica. Tudo vira jogo."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+real = ["anthropic>=1.0"]
+
+[project.scripts]
+fabrica = "fabrica.cli:principal"
+
+[tool.setuptools]
+packages = ["fabrica", "fabrica.provedores"]
+
+[tool.setuptools.package-data]
+fabrica = ["web/*.html"]

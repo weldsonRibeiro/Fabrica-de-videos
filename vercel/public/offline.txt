@@ -1,0 +1,2 @@
+Fábrica de Vídeos — este arquivo só existe para o projeto ter uma pasta de saída.
+Todas as rotas são repassadas para a fábrica (veja vercel.json).

@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: pip install ".[real]"
+      - run: python -m unittest -v
+
+  imagem-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Constrói a imagem
+        run: docker build -t fabrica:ci .
+      - name: A imagem sobe e responde no /saude
+        run: |
+          docker run -d --name fabrica-ci -p 8080:8080 -e FABRICA_PAINEL_CHAVE=chave-de-teste-bem-longa-123 fabrica:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/saude; then
+              uid=$(docker exec fabrica-ci awk '/^Uid:/{print $2}' /proc/1/status)
+              echo; echo "processo principal roda com uid $uid (esperado: 1000, não root)"
+              [ "$uid" = "1000" ]
+              exit $?
+            fi
+            sleep 1
+          done
+          docker logs fabrica-ci
+          exit 1
