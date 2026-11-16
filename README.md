@@ -29,7 +29,7 @@ git clone https://github.com/weldsonRibeiro/Fabrica-de-videos && cd Fabrica-de-v
 docker compose up -d --build       # ou: 24 h num servidor/PC com Docker
 ```
 
-Passo a passo completo (chaves, YouTube, Docker, **Railway**, celular, primeiro vídeo de teste): **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+Passo a passo completo (chaves, YouTube, Docker, **Railway**, painel na **Vercel**, celular, primeiro vídeo de teste): **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 ## O que já existe (v0.1 — esqueleto funcional)
 

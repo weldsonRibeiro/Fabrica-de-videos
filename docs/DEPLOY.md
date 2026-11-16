@@ -7,6 +7,7 @@ Três caminhos. Comece pelo **A** (5 minutos, sem chaves) para ver tudo funciona
 | **A** | Seu computador, direto | Testar, ver o painel | Só enquanto o computador estiver ligado |
 | **B** | Docker (seu PC ou um servidor/VPS) | Uso real | Sim (`restart: unless-stopped`) |
 | **C** | Railway | Uso real sem cuidar de servidor | Sim |
+| **D** | Painel na **Vercel** + fábrica em B ou C | Endereço/HTTPS/domínio próprio para o celular | Sim (a fábrica fica no B ou C) |
 
 > Enquanto isto não estiver na `main`, use a branch `claude/adoring-clarke-62go5q` (`git checkout claude/adoring-clarke-62go5q`).
 
@@ -91,6 +92,33 @@ docker compose logs -f fabrica   # acompanhar
 3. **Volume**: adicione um volume ao serviço montado em **`/data`** — sem ele, tudo some a cada deploy.
 4. **Settings → Networking → Generate Domain**. Já vem com HTTPS. Abra `https://SEU-DOMINIO/?k=SUA_CHAVE`.
 5. Mantenha **uma réplica só** (o maestro não foi feito para rodar em duas ao mesmo tempo).
+
+---
+
+## D. Painel na Vercel (fábrica em B ou C)
+
+**A Vercel não roda a fábrica**: ela só executa funções curtas, não tem disco persistente nem ffmpeg, e a fábrica precisa de um processo ligado o tempo todo (maestro, vídeos de vários minutos, estado em disco). Então a divisão é:
+
+- **Fábrica** → caminho **B** (Docker) ou **C** (Railway), com um endereço público **HTTPS**.
+- **Vercel** → só a "porta de entrada" do celular: ela repassa tudo (inclusive os vídeos, com `Range`) para a fábrica. Vantagens: seu domínio, HTTPS e um endereço fixo; o servidor pode ficar escondido atrás dele.
+
+Passo a passo:
+
+1. Suba a fábrica (B ou C) e anote o endereço público, ex.: `https://minha-fabrica.up.railway.app`. Confirme que `https://…/saude` responde `{"ok": true}`.
+2. Gere a configuração da Vercel:
+   ```bash
+   ./scripts/vercel-configurar.sh https://minha-fabrica.up.railway.app
+   git add vercel/vercel.json && git commit -m "Painel na Vercel" && git push
+   ```
+   (O `vercel.json` só tem o endereço do servidor, não tem segredo.)
+3. Na Vercel: **Add New → Project → importe o repositório → Root Directory: `vercel`** → Deploy. Sem build, sem variáveis. (Ou, pelo terminal: `cd vercel && npx vercel --prod`.)
+4. Abra `https://SEU-PROJETO.vercel.app/?k=SUA_CHAVE` no celular e use *Adicionar à tela inicial*. Um domínio próprio pode ser adicionado em *Settings → Domains*.
+
+Cuidados:
+- O servidor da fábrica **continua acessível pelo endereço dele**; a chave do painel é o que protege os dois. Use uma chave forte e não divulgue o endereço do servidor.
+- O vídeo passa pela Vercel (conta no tráfego de saída do seu plano). Para só conferir vídeos de alguns minutos é pouco, mas fique de olho.
+- **Plano Hobby**: pelos termos da Vercel, é para uso **pessoal e não comercial**. Como o objetivo aqui é monetizar canais, confira os termos; o plano Pro é o indicado para uso comercial.
+- Esta configuração é só um repasse de rotas e **não foi testada contra a Vercel** (não tenho como criar o deploy daqui). Se algo não abrir, teste primeiro o endereço direto do servidor.
 
 ---
 

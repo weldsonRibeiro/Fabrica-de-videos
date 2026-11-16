@@ -4,3 +4,4 @@ __pycache__/
 dados/
 saida/
 .env
+vercel/.vercel/

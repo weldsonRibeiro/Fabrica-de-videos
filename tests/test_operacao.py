@@ -119,3 +119,37 @@ class TestSaude(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestVercelConfigurar(unittest.TestCase):
+    def rodar(self, origem):
+        import shutil
+        import subprocess
+
+        raiz = Path(__file__).resolve().parent.parent
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "scripts").mkdir()
+            (Path(tmp) / "vercel").mkdir()
+            shutil.copy(raiz / "scripts/vercel-configurar.sh", Path(tmp) / "scripts")
+            shutil.copy(raiz / "vercel/vercel.template.json", Path(tmp) / "vercel")
+            r = subprocess.run(["bash", str(Path(tmp) / "scripts/vercel-configurar.sh"), origem], capture_output=True, text=True)
+            arquivo = Path(tmp) / "vercel/vercel.json"
+            return r.returncode, (json.loads(arquivo.read_text()) if arquivo.exists() else None)
+
+    def test_gera_repasse_para_o_servidor(self):
+        codigo, cfg = self.rodar("https://minha-fabrica.up.railway.app")
+        self.assertEqual(codigo, 0)
+        self.assertEqual(cfg["rewrites"], [{"source": "/(.*)", "destination": "https://minha-fabrica.up.railway.app/$1"}])
+        self.assertIsNone(cfg["framework"])
+
+    def test_recusa_http_caminho_e_laco(self):
+        for ruim in ("http://x.com", "https://x.com/painel", "https://x.com/", "https://meu.vercel.app", ""):
+            codigo, cfg = self.rodar(ruim)
+            self.assertNotEqual(codigo, 0, ruim)
+            self.assertIsNone(cfg)
+
+    def test_template_nao_deixa_o_painel_ser_indexado(self):
+        raiz = Path(__file__).resolve().parent.parent
+        modelo = json.loads((raiz / "vercel/vercel.template.json").read_text())
+        chaves = {h["key"] for regra in modelo["headers"] for h in regra["headers"]}
+        self.assertIn("X-Robots-Tag", chaves)
