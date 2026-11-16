@@ -68,7 +68,57 @@ def principal(argv: list[str] | None = None) -> int:
     comum(s)
     s.add_argument("--diario", required=True)
 
+    s = sub.add_parser("vigiar", help="monitora o Bitcoin 24 h com dados reais e opera NA SIMULAÇÃO (nenhuma ordem real)")
+    s.add_argument("--fonte", choices=["coinbase", "binance"], default="coinbase", help="coinbase funciona de IPs dos EUA; binance global não")
+    s.add_argument("--simbolo", help="padrão: BTC-USD (coinbase) ou BTCUSDT (binance)")
+    s.add_argument("--intervalo", default="1h")
+    s.add_argument("--pasta", default="dados-mesa", help="onde guarda velas, diário, estado e eventos")
+    s.add_argument("--checagem", type=float, default=60.0, help="segundos entre checagens de preço (stop/prazo)")
+    s.add_argument("--uma-vez", action="store_true", help="roda um ciclo e sai (para teste ou cron)")
+    s.add_argument("--horizonte", type=int, default=24)
+    s.add_argument("--taxa", type=float, default=10.0)
+    s.add_argument("--slippage", type=float, default=5.0)
+    s.add_argument("--capital", type=float, default=10000.0)
+    s.add_argument("--short", action="store_true")
+
+    s = sub.add_parser("status", help="mostra o estado do vigia (posição simulada, resultado, último sinal)")
+    s.add_argument("--pasta", default="dados-mesa")
+
     a = p.parse_args(argv)
+    if a.cmd == "vigiar":
+        from .fontes import FONTES
+        from .vigia import Vigia
+
+        simbolo = a.simbolo or ("BTC-USD" if a.fonte == "coinbase" else "BTCUSDT")
+        fonte = FONTES[a.fonte](simbolo, a.intervalo)
+        v = Vigia(fonte, leitores_padrao(), _cfg(a), a.pasta)
+        print(f"Vigiando {simbolo} ({a.fonte}, velas de {a.intervalo}) em SIMULAÇÃO. Estado em {a.pasta}/. Ctrl+C para parar.\n{AVISO}\n", flush=True)
+        if a.uma_vez:
+            for e in v.passo():
+                print(e)
+        else:
+            try:
+                v.rodar(a.checagem)
+            except KeyboardInterrupt:
+                print("parado.")
+        return 0
+    if a.cmd == "status":
+        arq = Path(a.pasta) / "estado.json"
+        if not arq.exists():
+            raise SystemExit(f"sem estado em {a.pasta}/ (rode `vigiar` primeiro)")
+        d = json.loads(arq.read_text(encoding="utf-8"))
+        c, g = d["corretora"], d["guarda"]
+        print(f"{d['modo']} · atualizado {d['atualizado_em']}")
+        print(f"preço {d['preco']:,.2f} · capital {c['capital_inicial']:,.0f} → equity {d['equity']:,.2f} ({d['equity'] / c['capital_inicial'] - 1:+.2%})")
+        pos = c["posicao"]
+        print("posição: " + (f"{'COMPRADO' if pos['direcao'] > 0 else 'VENDIDO'} {pos['fracao']:.1%} do capital desde {datetime.fromtimestamp(pos['t_entrada'], timezone.utc):%d/%m %H:%M} UTC, stop {pos['stop']:,.2f}" if pos else "fora do mercado"))
+        print(f"operações fechadas: {len(c['trades'])}" + (f" · último resultado {c['trades'][-1]['ret_capital']:+.2%} ({c['trades'][-1]['motivo']})" if c["trades"] else ""))
+        print(f"risco: {'DESLIGADO — ' + g['motivo'] if g['desligado'] else 'ok'}")
+        if d.get("ultimo_sinal"):
+            u = d["ultimo_sinal"]
+            print(f"último sinal: p(alta)={u['p']} · {u['motivo']}")
+        print("\n" + AVISO)
+        return 0
     if a.cmd == "sintetico":
         velas = dados.sintetico(a.n, a.seed, a.modo)
         dados.salvar_csv(velas, a.saida)

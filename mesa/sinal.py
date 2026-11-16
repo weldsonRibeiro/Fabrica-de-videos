@@ -6,7 +6,7 @@ import math
 from dataclasses import replace
 from pathlib import Path
 
-from .agregador import AgregadorLogistico, AgregadorMedia
+from .agregador import AgregadorLogistico, AgregadorMedia, linha
 from .backtest import Config, _bootstrap, preparar
 from .dados import Vela
 from .leitores import Leitor, vol_por_vela
@@ -16,23 +16,25 @@ from .risco import avaliar_entrada
 def gerar_sinal(velas: list[Vela], leitores: list[Leitor], cfg: Config) -> dict:
     """Recomendação simulada para a ÚLTIMA vela fechada. Treina só com o que já tem resultado conhecido."""
     H = cfg.horizonte
-    prep = preparar(velas, leitores, H)
     k = len(velas) - 1
     ls = [l.ler(velas[max(0, k + 1 - l.janela): k + 1]) for l in leitores]
     base = {"t": velas[k].t, "preco": velas[k].c, "horizonte": H,
             "leituras": [{"leitor": l.nome, "p": round(l.p, 4), "conf": round(l.conf, 3), "nota": l.nota} for l in ls]}
-    if cfg.agregador == "media":
-        agg = AgregadorMedia(cfg.usar)
+    if cfg.agregador == "media":                       # não precisa treinar: só as leituras da última vela
+        agg, linha_k = AgregadorMedia(cfg.usar), linha(ls)
+        veto_k, vol_k = any(l.veto for l in ls), vol_por_vela(velas[-49:])
     else:
+        prep = preparar(velas, leitores, H)
+        linha_k, veto_k, vol_k = prep.X[k], prep.veto[k], prep.vol[k]
         js = [j for j in prep.y if j + H <= k][-cfg.treino_max:]
         if len(js) < cfg.treino_min:
             return {**base, "p": None, "direcao": 0, "motivo": f"dados insuficientes para treinar ({len(js)}/{cfg.treino_min} amostras)"}
         agg = AgregadorLogistico(cfg.usar)
         agg.ajustar([prep.X[j] for j in js], [prep.y[j] for j in js])
-    p = agg.prob(prep.X[k])
-    if prep.veto[k]:
+    p = agg.prob(linha_k)
+    if veto_k:
         return {**base, "p": round(p, 4), "direcao": 0, "motivo": "vetado pelo leitor de regime (volatilidade explosiva)"}
-    d = avaliar_entrada(p, prep.vol[k], H, cfg.taxa_bps, cfg.slippage_bps, cfg.risco)
+    d = avaliar_entrada(p, vol_k, H, cfg.taxa_bps, cfg.slippage_bps, cfg.risco)
     return {**base, "p": round(p, 4), "direcao": d.direcao, "fracao": round(d.fracao, 4), "stop_pct": round(d.stop_pct, 4),
             "ev": round(d.ev, 5), "motivo": d.motivo or ("comprar (simulado)" if d.direcao > 0 else "vender (simulado)")}
 

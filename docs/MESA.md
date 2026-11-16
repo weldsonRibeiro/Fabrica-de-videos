@@ -39,6 +39,25 @@ python -m mesa avaliar --dados btc.csv --diario diario.jsonl
 
 Sem dados reais à mão, `python -m mesa sintetico --modo ruido|momentum|regimes --saida x.csv` gera preços **inventados** para testar a estrutura. Eles **não são o mercado**.
 
+## Monitorar 24 horas com dados reais (simulado)
+
+```bash
+python -m mesa vigiar --fonte coinbase --pasta dados-mesa      # fica rodando; Ctrl+C para parar
+python -m mesa status --pasta dados-mesa                       # onde está: posição, resultado, último sinal
+```
+
+O **vigia** usa o preço **real** do Bitcoin (APIs públicas da Coinbase ou da Binance, **sem chave**) e faz tudo o que um robô faria, **só que com ordens de mentirinha**:
+
+- **A cada 60 s** lê o preço, confere o **stop** e o **prazo** da posição simulada e atualiza o guarda de risco (limite do dia e kill switch).
+- **A cada vela fechada** roda os agentes, grava o sinal no diário e, se o risco permitir, **abre uma posição simulada**.
+- Guarda tudo em disco (`velas.csv`, `diario.jsonl`, `estado.json`, `eventos.log`): se reiniciar, **continua de onde parou**. Erro de rede não derruba; ele tenta de novo.
+
+Fonte de dados: use `--fonte coinbase` se rodar num servidor nos EUA (como o Railway em `iad`): a Binance global **bloqueia IPs dos EUA**. No seu computador no Brasil, a Binance costuma funcionar.
+
+**No Railway:** crie um **segundo serviço** a partir do mesmo repositório, com *Custom Start Command* `python -m mesa vigiar --pasta /data/mesa` e um volume próprio em `/data`. Assim a fábrica de vídeos e a mesa rodam separadas.
+
+Isso já gera o que mais importa: **resultado ao vivo, com preço real, sem risco**, para comparar com o backtest depois de semanas.
+
 ## Como ler o resultado
 
 - **IC 95% por operação**: o intervalo (por *bootstrap*) do retorno médio por operação. "Evidência de vantagem" só aparece com **≥ 30 operações** e o intervalo **inteiro acima de zero**. É evidência, **não prova**.
@@ -67,4 +86,9 @@ Isto valida a **estrutura**. **Não** diz nada sobre se existe vantagem no Bitco
 1. **Dados reais** e a primeira rodada do protocolo acima.
 2. **Mais leitores**: derivativos de cripto (funding, open interest), livro de ofertas, e o leitor de **notícias** com um classificador de manchetes datadas (a interface já existe e já não enxerga o futuro).
 3. **Paper trading contínuo**: o comando `sinal` periódico (como o maestro da fábrica), com painel.
-4. **Execução em corretora**, só depois de semanas/meses de paper trading que **vençam uma estratégia simples depois de custos**: capital pequeno, limites fixos no código e **aprovação humana por ordem**. Fora do escopo por enquanto.
+4. **Execução em corretora** — **não existe no código**, de propósito. Só depois de semanas/meses de paper trading que **vençam uma estratégia simples depois de custos**, e nesta ordem:
+   1. **Testnet** da corretora (dinheiro de mentirinha, API de verdade): serve para testar o envio, o tratamento de erros e ordens que falham.
+   2. **Chave de API só com permissão de operar**, **nunca de saque**, restrita ao IP do servidor.
+   3. **Capital pequeno**, que você aceita perder por inteiro, com os mesmos limites do risco no código (perda do dia, kill switch).
+   4. **Aprovação humana por ordem** no começo (como na fábrica de vídeos), e só depois automático.
+   5. Regras do país: operar o próprio dinheiro é uma coisa; operar o de terceiros exige autorização.

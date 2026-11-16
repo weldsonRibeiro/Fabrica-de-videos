@@ -60,6 +60,13 @@ class GuardaRisco:
         if not self.desligado and equity < self.pico * (1 - self.cfg.drawdown_max):
             self.desligado, self.motivo = True, f"KILL SWITCH: queda de {1 - equity / self.pico:.0%} desde o topo"
 
+    def para_dict(self) -> dict:
+        return {"pico": self.pico, "dia": self.dia, "abertura_dia": self.abertura_dia, "desligado": self.desligado, "motivo": self.motivo}
+
+    def de_dict(self, d: dict) -> None:
+        self.pico, self.dia, self.abertura_dia = d["pico"], d["dia"], d["abertura_dia"]
+        self.desligado, self.motivo = d["desligado"], d["motivo"]
+
     def pode_operar(self, equity: float) -> tuple[bool, str]:
         if self.desligado:
             return False, self.motivo

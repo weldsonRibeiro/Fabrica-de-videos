@@ -10,6 +10,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY pyproject.toml ./
 COPY fabrica ./fabrica
+COPY mesa ./mesa
 RUN pip install --no-cache-dir ".[real]"
 COPY canais.example.json ./
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh

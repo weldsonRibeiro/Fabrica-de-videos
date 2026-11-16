@@ -176,6 +176,7 @@ Módulo separado (`mesa/`) para pesquisar operações com **agentes leitores, pr
 ```bash
 python -m mesa sintetico --modo ruido --saida x.csv && python -m mesa backtest --dados x.csv   # testa a estrutura
 python -m mesa baixar --saida btc.csv && python -m mesa backtest --dados btc.csv                # com Bitcoin real (no seu computador)
+python -m mesa vigiar                                                                            # monitora o Bitcoin 24 h com dados reais e opera NA SIMULAÇÃO
 ```
 
 ## Origem da ideia
