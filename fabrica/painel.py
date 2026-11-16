@@ -18,6 +18,7 @@ from typing import Callable
 from urllib.parse import parse_qs, urlparse
 
 from .armazem import Armazem
+from .fuso import agora_local
 from .jogo import Carteira
 from .maestro import aprovar
 from .modelos import ETAPAS, Canal, Status, Video
@@ -77,7 +78,7 @@ class Painel:
         for o in outros:  # a lista "na fábrica" não precisa carregar as mídias
             for k in ("titulos", "descricao", "video", "thumbnails", "shorts"):
                 o.pop(k, None)
-        return {"saldo": saldo, "fuso": self.fuso, "agora": datetime.now().isoformat(timespec="seconds"), "pendentes": pendentes, "videos": outros,
+        return {"saldo": saldo, "fuso": self.fuso, "agora": agora_local().isoformat(timespec="seconds"), "pendentes": pendentes, "videos": outros,
                 "historico": list(reversed(carteira.historico[-8:]))}
 
     def aprovar(self, dados: dict) -> None:
@@ -140,6 +141,8 @@ def _fazer_handler(painel: Painel) -> type[BaseHTTPRequestHandler]:
         # -- rotas
         def do_GET(self):  # noqa: N802
             url = urlparse(self.path)
+            if url.path == "/saude":  # para o healthcheck da plataforma; não revela nada
+                return self._json(200, {"ok": True})
             chave = parse_qs(url.query).get("k", [""])[0]
             if url.path == "/" and chave:  # primeira visita: troca a chave da URL por um cookie e limpa a URL
                 if not hmac.compare_digest(chave, painel.chave):

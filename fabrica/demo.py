@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from .armazem import Armazem
+from .fuso import agora_local
 from .jogo import Carteira
 from .modelos import ETAPAS, Status, Video
 
@@ -25,7 +26,7 @@ def _arquivo(pasta: Path, nome: str, conteudo: bytes = b"demo") -> str:
 
 def criar(armazem: Armazem, saida: Path, agora: datetime | None = None) -> None:
     """Cria, ao redor de `agora`, vídeos em cada estado possível."""
-    agora = (agora or datetime.now()).replace(second=0, microsecond=0)
+    agora = (agora or agora_local()).replace(second=0, microsecond=0)
     dia = agora.date()
     horario = lambda c: datetime.combine(dia, datetime.strptime(c["inicio_producao"], "%H:%M").time())  # noqa: E731
 

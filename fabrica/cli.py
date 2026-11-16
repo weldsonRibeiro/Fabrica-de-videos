@@ -8,6 +8,8 @@ from datetime import date, datetime
 from pathlib import Path
 
 from .armazem import Armazem
+from .env import carregar_env
+from .fuso import agora_local
 from .jogo import Carteira
 from .maestro import Maestro, aprovar
 from .modelos import Canal
@@ -45,16 +47,23 @@ def _provedor(args: argparse.Namespace):
 
 
 def _agora(texto: str | None) -> datetime:
-    return datetime.fromisoformat(texto) if texto else datetime.now().replace(microsecond=0)
+    return datetime.fromisoformat(texto) if texto else agora_local()
+
+
+def _canais_padrao() -> str:
+    if os.environ.get("FABRICA_CANAIS"):
+        return os.environ["FABRICA_CANAIS"]
+    return "canais.json" if Path("canais.json").exists() else "canais.example.json"
 
 
 def principal(argv: list[str] | None = None) -> int:
+    carregar_env()  # lê o .env da pasta atual (sem sobrescrever o que já está no ambiente)
     p = argparse.ArgumentParser(prog="fabrica", description="Fábrica de vídeos com IA")
-    p.add_argument("--dados", default="dados", help="pasta do estado (padrão: dados)")
-    p.add_argument("--canais", default="canais.example.json", help="arquivo de canais")
-    p.add_argument("--provedor", choices=["falso", "real"], default="falso",
+    p.add_argument("--dados", default=os.environ.get("FABRICA_DADOS", "dados"), help="pasta do estado (env: FABRICA_DADOS)")
+    p.add_argument("--canais", default=_canais_padrao(), help="arquivo de canais (env: FABRICA_CANAIS)")
+    p.add_argument("--provedor", choices=["falso", "real"], default=os.environ.get("FABRICA_PROVEDOR", "falso"),
                    help="falso = simulação sem custo; real = Claude + voz + imagem + ffmpeg (veja .env.example)")
-    p.add_argument("--publicador", choices=["falso", "youtube"], default="falso",
+    p.add_argument("--publicador", choices=["falso", "youtube"], default=os.environ.get("FABRICA_PUBLICADOR", "falso"),
                    help="falso = só simula; youtube = sobe e agenda de verdade (veja .env.example)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -76,11 +85,12 @@ def principal(argv: list[str] | None = None) -> int:
     s.add_argument("video")
     s.add_argument("total", type=int)
 
+    sub.add_parser("doctor", help="confere o que falta antes de rodar (chaves, ffmpeg, canais...)")
     sub.add_parser("demo", help="cria dados de demonstração (um dia inventado) para ver o painel sem chaves")
 
     s = sub.add_parser("painel", help="painel de aprovação no celular (defina FABRICA_PAINEL_CHAVE)")
-    s.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 só atrás de HTTPS/túnel")
-    s.add_argument("--porta", type=int, default=8080)
+    s.add_argument("--host", default=os.environ.get("FABRICA_HOST", "127.0.0.1"), help="use 0.0.0.0 só atrás de HTTPS/túnel")
+    s.add_argument("--porta", type=int, default=int(os.environ.get("PORT", "8080")), help="env: PORT")
     s.add_argument("--com-maestro", action="store_true", help="roda também o tick a cada 60 s (um processo só)")
 
     s = sub.add_parser("youtube-autorizar", help="autoriza um canal do YouTube (uma vez por canal)")
@@ -92,7 +102,7 @@ def principal(argv: list[str] | None = None) -> int:
     armazem = Armazem(args.dados)
 
     if args.cmd == "agenda":
-        dia = date.fromisoformat(args.dia) if args.dia else date.today()
+        dia = date.fromisoformat(args.dia) if args.dia else agora_local().date()
         for v in _maestro(args).montar_agenda(dia):
             print(f"{v.producao_em:%H:%M}  {v.id}  {v.tema}")
     elif args.cmd == "tick":
@@ -110,6 +120,11 @@ def principal(argv: list[str] | None = None) -> int:
         ganhou = carteira.registrar_views(args.video, args.total)
         carteira.salvar(armazem)
         print(f"+{ganhou:.2f} moedas")
+    elif args.cmd == "doctor":
+        from .doctor import imprimir, verificar
+
+        return imprimir(verificar(canais=args.canais, dados=args.dados, saida=os.environ.get("FABRICA_SAIDA", "saida"),
+                                  provedor=args.provedor, publicador=args.publicador))
     elif args.cmd == "demo":
         from .demo import CANAIS_DEMO, criar
 

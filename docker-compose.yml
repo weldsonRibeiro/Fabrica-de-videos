@@ -1,0 +1,31 @@
+# Servidor/VPS ou seu computador com Docker:
+#   cp .env.example .env   # preencha as chaves
+#   docker compose up -d --build
+#   docker compose logs -f fabrica
+# Painel: http://127.0.0.1:8080/?k=<FABRICA_PAINEL_CHAVE>   (só local; veja docs/DEPLOY.md p/ abrir no celular)
+services:
+  fabrica:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "8080"
+      FABRICA_PROVEDOR: ${FABRICA_PROVEDOR:-real}
+      FABRICA_PUBLICADOR: ${FABRICA_PUBLICADOR:-youtube}
+    ports:
+      - "127.0.0.1:8080:8080"   # só a própria máquina; use o túnel abaixo ou Tailscale para o celular
+    volumes:
+      - fabrica-dados:/data
+
+  # Opcional: endereço https público para o celular (docker compose --profile tunel up -d).
+  # O endereço aparece em `docker compose logs tunel` e MUDA a cada reinício.
+  tunel:
+    profiles: ["tunel"]
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://fabrica:8080
+    restart: unless-stopped
+    depends_on:
+      - fabrica
+
+volumes:
+  fabrica-dados:

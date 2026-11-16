@@ -20,6 +20,17 @@ enquanto se diverte.
 | Sempre | 🎮 **Jogo** | Cada vídeo vira **despesa** da empresa; cada view vira **moeda**. Enquanto isso o dono cuida das lojas e faz missão. |
 | À noite | 🌙 **Maestro** | O dia seguinte já está na agenda. O escritório não para. |
 
+## Como rodar
+
+```bash
+git clone https://github.com/weldsonRibeiro/Fabrica-de-videos && cd Fabrica-de-videos
+./scripts/iniciar.sh --demo        # vê o painel e o escritório em 1 minuto, sem chaves
+./scripts/iniciar.sh               # modo real (cria .env e canais.json; o `doctor` diz o que falta)
+docker compose up -d --build       # ou: 24 h num servidor/PC com Docker
+```
+
+Passo a passo completo (chaves, YouTube, Docker, **Railway**, celular, primeiro vídeo de teste): **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
 ## O que já existe (v0.1 — esqueleto funcional)
 
 A fábrica inteira já roda de ponta a ponta com **provedores falsos** (não gasta nada), para validar
@@ -35,6 +46,8 @@ fabrica/
 ├── armazem.py      # estado em JSON, escrita atômica (sobrevive a travas e reinícios)
 ├── demo.py         # dados de demonstração (um dia inventado)
 ├── painel.py       # painel web de aprovação (+ web/index.html)
+├── doctor.py       # `fabrica doctor`: o que falta antes de rodar
+├── env.py / fuso.py # .env automático; relógio no fuso do dono
 ├── cli.py          # linha de comando
 └── provedores/
     ├── base.py     # contratos: Provedor, Publicador, LimiteAtingido
@@ -148,7 +161,7 @@ vídeo vira `pausado` com um `retomar_em`; a próxima batida do maestro depois d
 - [x] **Escritório visual** — estações, funcionários, agenda, cofre e extrato (aba Escritório do painel)
 - [ ] **O jogo de verdade** — lojas, missões, upgrades que melhoram a fábrica
 - [ ] **Agenda inteligente** — temas gerados pela própria IA a partir de tendências e desempenho
-- [ ] **Execução contínua** — rodar o maestro num servidor (cron/worker), com logs e alertas
+- [x] **Execução contínua** — Dockerfile, docker-compose, Railway, `doctor`, `/saude` (falta: alertas e deploy testado em produção)
 
 Detalhes de arquitetura e do design do jogo em [`docs/`](docs/).
 
