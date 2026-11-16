@@ -32,12 +32,43 @@ class Status(str, Enum):
 
 
 @dataclass
+class Perfil:
+    """A identidade de um canal: o que o torna diferente dos outros. Tudo é opcional;
+    campo vazio = usa o padrão da configuração geral."""
+
+    voz: str = ""               # voz da narração (ex.: "onyx", "nova")
+    estilo_voz: str = ""        # como falar: "calmo e grave, como documentário"
+    tom: str = ""               # tom do roteiro: "didático e bem-humorado"
+    publico: str = ""           # para quem é: "jovens de 18 a 30 anos"
+    estilo_visual: str = ""     # prefixo de TODA imagem do canal (consistência): "ilustração flat, tons quentes"
+    evitar: list[str] = field(default_factory=list)  # assuntos/palavras que o canal não usa
+    cenas: int = 0              # nº de cenas por vídeo (0 = padrão)
+    categoria_youtube: str = "" # id da categoria do YouTube ("27" = Educação)
+    idioma: str = ""            # idioma do vídeo no YouTube (padrão: pt-BR)
+
+    @classmethod
+    def de_dict(cls, d: dict[str, Any] | None) -> "Perfil":
+        d = d or {}
+        conhecidos = {f for f in cls.__dataclass_fields__}
+        p = cls(**{k: v for k, v in d.items() if k in conhecidos})
+        p.cenas = int(p.cenas or 0)
+        p.evitar = [str(x) for x in (p.evitar or [])]
+        p.categoria_youtube = str(p.categoria_youtube or "")
+        return p
+
+    def para_dict(self) -> dict[str, Any]:
+        """Só o que foi preenchido (o JSON fica enxuto)."""
+        return {k: v for k, v in self.__dict__.items() if v not in ("", 0, [], None)}
+
+
+@dataclass
 class Canal:
     id: str
     nome: str
     nicho: str
     inicio_producao: str  # "HH:MM" — hora em que a fábrica começa o vídeo do dia
     temas: list[str] = field(default_factory=list)
+    perfil: Perfil = field(default_factory=Perfil)
 
     @classmethod
     def de_dict(cls, d: dict[str, Any]) -> "Canal":
@@ -47,6 +78,7 @@ class Canal:
             nicho=d.get("nicho", ""),
             inicio_producao=d["inicio_producao"],
             temas=list(d.get("temas", [])),
+            perfil=Perfil.de_dict(d.get("perfil")),
         )
 
 
@@ -61,6 +93,7 @@ class Video:
     tema: str
     producao_em: datetime
     nicho: str = ""
+    perfil: dict[str, Any] = field(default_factory=dict)  # cópia do perfil do canal no dia da produção
     status: Status = Status.AGENDADO
     artefatos: dict[str, dict[str, Any]] = field(default_factory=dict)  # saída de cada etapa
     tentativas: dict[str, int] = field(default_factory=dict)
@@ -78,6 +111,7 @@ class Video:
             "canal_id": self.canal_id,
             "tema": self.tema,
             "nicho": self.nicho,
+            "perfil": self.perfil,
             "producao_em": self.producao_em.isoformat(),
             "status": self.status.value,
             "artefatos": self.artefatos,
@@ -99,6 +133,7 @@ class Video:
             tema=d["tema"],
             producao_em=datetime.fromisoformat(d["producao_em"]),
             nicho=d.get("nicho", ""),
+            perfil=d.get("perfil", {}),
             status=Status(d["status"]),
             artefatos=d.get("artefatos", {}),
             tentativas=d.get("tentativas", {}),

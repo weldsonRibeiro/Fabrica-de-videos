@@ -4,13 +4,47 @@
     "nome": "Histórias Perdidas",
     "nicho": "curiosidades históricas",
     "inicio_producao": "05:30",
-    "temas": ["A biblioteca de Alexandria", "O mistério de Machu Picchu", "A queda de Constantinopla"]
+    "temas": [
+      "A biblioteca de Alexandria",
+      "O mistério de Machu Picchu",
+      "A queda de Constantinopla"
+    ],
+    "perfil": {
+      "voz": "onyx",
+      "estilo_voz": "Voz grave e calma, ritmo de documentário, com pausas dramáticas.",
+      "tom": "misterioso e envolvente, sem exagero",
+      "publico": "adultos curiosos por história, 25 a 55 anos",
+      "estilo_visual": "pintura a óleo cinematográfica, luz de velas, tons quentes e terrosos",
+      "evitar": [
+        "política partidária atual",
+        "teorias da conspiração sem fonte"
+      ],
+      "cenas": 12,
+      "categoria_youtube": "27"
+    }
   },
   {
     "id": "financas",
     "nome": "Dinheiro Sem Medo",
     "nicho": "educação financeira",
     "inicio_producao": "07:00",
-    "temas": ["Como funciona o Tesouro Direto", "Juros compostos na prática", "Reserva de emergência"]
+    "temas": [
+      "Como funciona o Tesouro Direto",
+      "Juros compostos na prática",
+      "Reserva de emergência"
+    ],
+    "perfil": {
+      "voz": "nova",
+      "estilo_voz": "Voz amigável e animada, direta, como uma conversa com um amigo que entende de dinheiro.",
+      "tom": "didático, bem-humorado e sem jargão",
+      "publico": "jovens de 18 a 35 anos começando a investir",
+      "estilo_visual": "ilustração flat colorida, personagens simples, fundo limpo",
+      "evitar": [
+        "promessas de ganho garantido",
+        "recomendar ativo específico para comprar"
+      ],
+      "cenas": 10,
+      "categoria_youtube": "27"
+    }
   }
 ]

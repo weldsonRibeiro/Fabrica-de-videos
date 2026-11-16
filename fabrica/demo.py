@@ -10,10 +10,12 @@ from .jogo import Carteira
 from .modelos import ETAPAS, Status, Video
 
 CANAIS_DEMO = [
-    {"id": "historias", "nome": "Histórias Perdidas", "nicho": "história", "inicio_producao": "05:30", "temas": ["A biblioteca de Alexandria"]},
+    {"id": "historias", "nome": "Histórias Perdidas", "nicho": "história", "inicio_producao": "05:30", "temas": ["A biblioteca de Alexandria"],
+     "perfil": {"voz": "onyx", "tom": "misterioso e envolvente", "estilo_visual": "pintura a óleo cinematográfica, tons quentes", "evitar": ["política partidária atual"], "cenas": 12}},
     {"id": "financas", "nome": "Dinheiro Sem Medo", "nicho": "finanças", "inicio_producao": "07:00", "temas": ["Juros compostos na prática"]},
     {"id": "ciencia", "nome": "Ciência em 10", "nicho": "ciência", "inicio_producao": "09:00", "temas": ["Buracos negros"]},
-    {"id": "games", "nome": "Fase Final", "nicho": "games", "inicio_producao": "12:00", "temas": ["A história do Mario"]},
+    {"id": "games", "nome": "Fase Final", "nicho": "games", "inicio_producao": "12:00", "temas": ["A história do Mario"],
+     "perfil": {"voz": "echo", "tom": "nostálgico e divertido", "publico": "gamers de 20 a 40 anos", "estilo_visual": "pixel art colorida, estilo 16 bits"}},
     {"id": "viagem", "nome": "Mundo Afora", "nicho": "viagem", "inicio_producao": "15:30", "temas": ["Roteiro em Lisboa"]},
 ]
 

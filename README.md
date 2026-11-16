@@ -142,8 +142,9 @@ A aba **🏢 Escritório** do painel mostra a fábrica funcionando, com os dados
 - Abaixo: legenda com o que cada funcionário está fazendo e a barra de progresso, **extrato** da empresa (despesas de produção, moedas de views) e a lista de vídeos.
 - Funciona em modo claro e escuro, respeita "reduzir movimento" e atualiza sozinho a cada 10 s.
 
-Os canais ficam em [`canais.example.json`](canais.example.json) (nome, nicho, horário de início e
-lista de temas).
+Os canais ficam em [`canais.example.json`](canais.example.json) (nome, nicho, horário de início,
+lista de temas e um **perfil** opcional: voz, tom, público, estilo visual, o que evitar, nº de cenas e
+categoria do YouTube — veja `docs/DEPLOY.md`).
 
 ## Como a "retomada sozinha" funciona
 
