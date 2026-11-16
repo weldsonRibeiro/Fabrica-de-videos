@@ -1,0 +1,28 @@
+[
+  {
+    "id": "gta6-hoje",
+    "nome": "GTA 6 Hoje",
+    "nicho": "notícias diárias sobre o lançamento de GTA 6",
+    "inicio_producao": "00:00",
+    "temas": [
+      "Resumo do dia: tudo o que mudou em GTA 6 nas últimas 24 horas"
+    ],
+    "perfil": {
+      "voz": "ash",
+      "estilo_voz": "Voz firme e ágil de apresentador de telejornal de games, sem exagero.",
+      "tom": "direto, confiável e ágil, como um boletim; adapte o enfoque ao momento (pré-lançamento ou pós-lançamento) conforme a data de hoje",
+      "publico": "fãs de games brasileiros de 16 a 40 anos",
+      "estilo_visual": "arte digital estilo capa de revista, rosa e azul neon, atmosfera de Miami nos anos 80, sem logos, sem texto escrito e sem rostos de personagens oficiais (só silhuetas ou figuras estilizadas)",
+      "evitar": [
+        "afirmar boato, vazamento ou teoria como se fosse fato",
+        "prometer data, preço, recurso ou plataforma que não seja oficial",
+        "links, instruções ou incentivo à pirataria ou a acesso antecipado ilegal",
+        "usar trechos, imagens ou logos oficiais da Rockstar ou da Take-Two",
+        "ataques a pessoas, a outras comunidades ou a outras plataformas"
+      ],
+      "cenas": 3,
+      "categoria_youtube": "20",
+      "shorts": 0
+    }
+  }
+]

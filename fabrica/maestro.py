@@ -52,7 +52,10 @@ class Maestro:
             self.montar_agenda(agora.date() + timedelta(days=1))
 
         mudaram = []
+        ativos = {c.id for c in self.canais}
         for video in self.armazem.listar_videos():
+            if video.canal_id not in ativos:
+                continue  # canal removido do canais.json: não gasta nada com ele
             if self._deve_produzir(video, agora):
                 mudaram.append(self.pipeline.rodar(video, agora))
             elif self._deve_publicar(video, agora):

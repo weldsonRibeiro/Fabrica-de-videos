@@ -147,7 +147,7 @@ A tela inicial do painel é o **escritório em pixel art, visto de cima**, tela 
 
 Os canais ficam em [`canais.example.json`](canais.example.json) (nome, nicho, horário de início,
 lista de temas e um **perfil** opcional: voz, tom, público, estilo visual, o que evitar, nº de cenas e
-categoria do YouTube — veja `docs/DEPLOY.md`).
+categoria do YouTube — veja `docs/DEPLOY.md`). `canais.gta6.json` é um exemplo pronto com 6 canais sobre o lançamento de GTA 6.
 
 ## Como a "retomada sozinha" funciona
 
@@ -168,6 +168,16 @@ vídeo vira `pausado` com um `retomar_em`; a próxima batida do maestro depois d
 - [x] **Execução contínua** — Dockerfile, docker-compose, Railway, `doctor`, `/saude` (falta: alertas e deploy testado em produção)
 
 Detalhes de arquitetura e do design do jogo em [`docs/`](docs/).
+
+## Mesa de operações (Bitcoin) — laboratório de simulação
+
+Módulo separado (`mesa/`) para pesquisar operações com **agentes leitores, probabilidades calibradas e risco**, só em **simulação** (não envia ordens a corretoras). Veja [`docs/MESA.md`](docs/MESA.md).
+
+```bash
+python -m mesa sintetico --modo ruido --saida x.csv && python -m mesa backtest --dados x.csv   # testa a estrutura
+python -m mesa baixar --saida btc.csv && python -m mesa backtest --dados btc.csv                # com Bitcoin real (no seu computador)
+python -m mesa vigiar                                                                            # monitora o Bitcoin 24 h com dados reais e opera NA SIMULAÇÃO
+```
 
 ## Origem da ideia
 

@@ -45,6 +45,7 @@ class Perfil:
     cenas: int = 0              # nº de cenas por vídeo (0 = padrão)
     categoria_youtube: str = "" # id da categoria do YouTube ("27" = Educação)
     idioma: str = ""            # idioma do vídeo no YouTube (padrão: pt-BR)
+    shorts: int | None = None   # shorts por vídeo (None = 3; 0 = canal sem shorts — poupa a cota do YouTube)
 
     @classmethod
     def de_dict(cls, d: dict[str, Any] | None) -> "Perfil":
@@ -54,11 +55,12 @@ class Perfil:
         p.cenas = int(p.cenas or 0)
         p.evitar = [str(x) for x in (p.evitar or [])]
         p.categoria_youtube = str(p.categoria_youtube or "")
+        p.shorts = None if p.shorts in (None, "") else int(p.shorts)
         return p
 
     def para_dict(self) -> dict[str, Any]:
         """Só o que foi preenchido (o JSON fica enxuto)."""
-        return {k: v for k, v in self.__dict__.items() if v not in ("", 0, [], None)}
+        return {k: v for k, v in self.__dict__.items() if v not in ("", 0, [], None) or (k == "shorts" and v is not None)}
 
 
 @dataclass

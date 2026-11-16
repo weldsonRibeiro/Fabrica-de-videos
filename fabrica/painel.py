@@ -81,7 +81,7 @@ class Painel:
 
     # --- regras (testáveis sem HTTP) ----------------------------------------------------------
     def estado(self) -> dict:
-        videos = self.armazem.listar_videos()  # leitura segura: os arquivos são trocados de forma atômica
+        videos = [v for v in self.armazem.listar_videos() if v.canal_id in self.canais]  # leitura segura: os arquivos são trocados de forma atômica
         carteira = Carteira.carregar(self.armazem)
         saldo = carteira.saldo
         pendentes = [_json(v, self.canais, self.saida) for v in videos if v.status is Status.AGUARDANDO_APROVACAO]

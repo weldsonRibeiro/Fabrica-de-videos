@@ -46,7 +46,7 @@ def verificar(
                 if not c.get("id") or not c.get("nome"):
                     problemas.append("canal sem id/nome")
             VOZES = {"alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse"}
-            CAMPOS = {"voz", "estilo_voz", "tom", "publico", "estilo_visual", "evitar", "cenas", "categoria_youtube", "idioma"}
+            CAMPOS = {"voz", "estilo_voz", "tom", "publico", "estilo_visual", "evitar", "cenas", "categoria_youtube", "idioma", "shorts"}
             for c in lista:
                 perfil = c.get("perfil") or {}
                 nome = c.get("id", "?")
@@ -55,11 +55,19 @@ def verificar(
                     problemas.append(f"{nome}: campo(s) de perfil desconhecido(s): {', '.join(desconhecidos)}")
                 if perfil.get("cenas") not in (None, 0) and not (isinstance(perfil["cenas"], int) and 1 <= perfil["cenas"] <= 30):
                     problemas.append(f"{nome}: perfil.cenas deve ser um número de 1 a 30")
+                if perfil.get("shorts") is not None and not (isinstance(perfil["shorts"], int) and 0 <= perfil["shorts"] <= 5):
+                    problemas.append(f"{nome}: perfil.shorts deve ser um número de 0 a 5")
                 if perfil.get("categoria_youtube") and not str(perfil["categoria_youtube"]).isdigit():
                     problemas.append(f"{nome}: perfil.categoria_youtube deve ser o número da categoria (ex.: 27)")
                 if perfil.get("voz") and perfil["voz"] not in VOZES:
                     r.append((AVISO, f"Canal '{nome}': voz '{perfil['voz']}' não está na lista conhecida ({', '.join(sorted(VOZES))}) — confira"))
             ids = [c["id"] for c in lista if c.get("id")]
+            if publicador == "youtube":
+                uploads = sum(1 + (3 if (c.get("perfil") or {}).get("shorts") is None else (c.get("perfil") or {})["shorts"]) for c in lista)
+                unidades = uploads * 1600 + len(lista) * 50
+                if unidades > 10000:
+                    r.append((AVISO, f"Cota do YouTube: {uploads} uploads/dia ≈ {unidades:,} unidades, acima das 10.000 da cota padrão "
+                                     f"(≈ 6 uploads/dia) — reduza `perfil.shorts` (0 poupa a cota) ou peça aumento de cota ao Google".replace(",", ".")))
             add(ERRO if problemas else OK, f"{len(lista)} canal(is) em {canais}" + (": " + "; ".join(problemas) if problemas else ""))
             if arquivo.name == "canais.example.json":
                 add(AVISO, "Usando o canais.example.json de exemplo — copie para canais.json e coloque os SEUS canais")
