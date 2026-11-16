@@ -54,7 +54,9 @@ O **vigia** usa o preço **real** do Bitcoin (APIs públicas da Coinbase ou da B
 
 Fonte de dados: use `--fonte coinbase` se rodar num servidor nos EUA (como o Railway em `iad`): a Binance global **bloqueia IPs dos EUA**. No seu computador no Brasil, a Binance costuma funcionar.
 
-**No Railway:** crie um **segundo serviço** a partir do mesmo repositório, com *Custom Start Command* `python -m mesa vigiar --pasta /data/mesa` e um volume próprio em `/data`. Assim a fábrica de vídeos e a mesa rodam separadas.
+**No Railway, sem pagar outro serviço:** o mesmo serviço pode rodar a mesa no lugar da fábrica de vídeos. Basta definir a variável **`FABRICA_MODO=mesa`** (opcional: `MESA_FONTE=coinbase|binance`, `MESA_PASTA=/data/mesa`). O vigia sobe junto com uma **página de status** protegida pela chave do painel (`https://SEU-ENDERECO/?k=CHAVE`) e o `/saude` usado pelo Railway. Para **voltar à fábrica de vídeos**, apague `FABRICA_MODO`. Os dados da mesa ficam em `/data/mesa`, separados dos da fábrica.
+
+Quer rodar os dois ao mesmo tempo? Aí são dois serviços (dois processos), com custo próprio no seu plano.
 
 Isso já gera o que mais importa: **resultado ao vivo, com preço real, sem risco**, para comparar com o backtest depois de semanas.
 

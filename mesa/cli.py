@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -75,6 +76,9 @@ def principal(argv: list[str] | None = None) -> int:
     s.add_argument("--pasta", default="dados-mesa", help="onde guarda velas, diário, estado e eventos")
     s.add_argument("--checagem", type=float, default=60.0, help="segundos entre checagens de preço (stop/prazo)")
     s.add_argument("--uma-vez", action="store_true", help="roda um ciclo e sai (para teste ou cron)")
+    s.add_argument("--servir", action="store_true", help="serve a página de status (protegida por FABRICA_PAINEL_CHAVE) e o /saude")
+    s.add_argument("--host", default=os.environ.get("FABRICA_HOST", "127.0.0.1"))
+    s.add_argument("--porta", type=int, default=int(os.environ.get("PORT", "8080")))
     s.add_argument("--horizonte", type=int, default=24)
     s.add_argument("--taxa", type=float, default=10.0)
     s.add_argument("--slippage", type=float, default=5.0)
@@ -91,6 +95,14 @@ def principal(argv: list[str] | None = None) -> int:
 
         simbolo = a.simbolo or ("BTC-USD" if a.fonte == "coinbase" else "BTCUSDT")
         fonte = FONTES[a.fonte](simbolo, a.intervalo)
+        if a.servir:
+            from .painel import servir_em_segundo_plano
+
+            try:
+                servir_em_segundo_plano(a.pasta, os.environ.get("FABRICA_PAINEL_CHAVE", ""), a.host, a.porta)
+            except ValueError as erro:
+                raise SystemExit(f"{erro}. Gere uma: python -c \"import secrets; print(secrets.token_urlsafe(32))\"")
+            print(f"Página de status em http://{a.host}:{a.porta}/?k=<chave> (e /saude)", flush=True)
         v = Vigia(fonte, leitores_padrao(), _cfg(a), a.pasta)
         print(f"Vigiando {simbolo} ({a.fonte}, velas de {a.intervalo}) em SIMULAÇÃO. Estado em {a.pasta}/. Ctrl+C para parar.\n{AVISO}\n", flush=True)
         if a.uma_vez:

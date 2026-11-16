@@ -387,3 +387,91 @@ class TestFontesAoVivo(unittest.TestCase):
                 self.assertEqual(principal(["status", "--pasta", tmp]), 0)
             self.assertIn("SIMULAÇÃO", saida.getvalue())
             self.assertIn("fora do mercado", saida.getvalue())
+
+
+class TestPaginaDaMesa(unittest.TestCase):
+    CHAVE = "chave-de-teste-bem-longa-123"
+
+    def preparar(self, tmp):
+        import threading
+        import urllib.request
+        from http.cookiejar import CookieJar
+
+        from mesa.painel import servidor
+        from mesa.vigia import Vigia
+
+        velas = dados.sintetico(900, seed=4)
+        fonte = FonteFalsa(velas)
+        fonte.agora = velas[-1].t + 3600
+        Vigia(fonte, leitores_padrao(), Config(agregador="media"), tmp).passo(fonte.agora)
+        srv = servidor(tmp, self.CHAVE, "127.0.0.1", 0)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        self.base = f"http://127.0.0.1:{srv.server_address[1]}"
+        self.cliente = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+
+    def pedir(self, caminho):
+        import urllib.error
+
+        try:
+            with self.cliente.open(self.base + caminho, timeout=5) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
+
+    def test_saude_publica_e_o_resto_exige_chave(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.preparar(tmp)
+            self.assertEqual(self.pedir("/saude"), (200, b'{"ok": true}'))
+            self.assertEqual(self.pedir("/")[0], 401)
+            self.assertEqual(self.pedir("/api/estado")[0], 401)
+            self.assertEqual(self.pedir("/?k=errada")[0], 401)
+            self.assertEqual(self.pedir(f"/?k={self.CHAVE}")[0], 200)                  # segue o redirecionamento já com o cookie
+            status, corpo = self.pedir("/api/estado")
+            d = json.loads(corpo)
+            self.assertEqual(status, 200)
+            self.assertIn("SIMULAÇÃO", d["estado"]["modo"])
+            self.assertTrue(d["estado"]["ultimo_sinal"]["leituras"])                   # o que cada agente pensa
+            self.assertTrue(d["eventos"])
+
+    def test_pagina_avisa_que_e_simulacao_e_nao_expoe_outros_arquivos(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.preparar(tmp)
+            self.pedir(f"/?k={self.CHAVE}")
+            self.assertIn("SIMULAÇÃO".encode(), self.pedir("/")[1])
+            for caminho in ("/velas.csv", "/estado.json", "/../etc/passwd"):
+                self.assertEqual(self.pedir(caminho)[0], 404, caminho)
+
+    def test_chave_curta_e_recusada(self):
+        from mesa.painel import servidor
+
+        with self.assertRaises(ValueError):
+            servidor(".", "curta")
+
+    def test_entrypoint_modo_mesa_e_modo_fabrica(self):
+        import os
+        import shutil
+        import subprocess
+
+        raiz = Path(__file__).resolve().parent.parent
+        prefixo = []
+        if os.getuid() == 0:
+            if not shutil.which("setpriv"):
+                self.skipTest("sem setpriv")
+            prefixo = ["setpriv", "--reuid=nobody", "--regid=nogroup", "--clear-groups"]
+        with tempfile.TemporaryDirectory() as tmp:
+            os.chmod(tmp, 0o777)
+            (Path(tmp) / "bin").mkdir()
+            shim = Path(tmp) / "bin" / "python"
+            shim.write_text('#!/bin/sh\necho "ARGS:$*"\n')
+            shim.chmod(0o755)
+
+            def rodar(extra):
+                env = {"PATH": f"{tmp}/bin:/usr/bin:/bin", "FABRICA_DADOS": f"{tmp}/d", "FABRICA_SAIDA": f"{tmp}/s", "FABRICA_CANAIS": f"{tmp}/c.json",
+                       "FABRICA_EXEMPLO": str(raiz / "canais.example.json"), "MESA_PASTA": f"{tmp}/mesa", **extra}
+                return subprocess.run(prefixo + ["env", "-i", *[f"{k}={v}" for k, v in env.items()], str(raiz / "docker/entrypoint.sh")],
+                                      capture_output=True, text=True).stdout
+            self.assertIn(f"ARGS:-m mesa vigiar --servir --fonte coinbase --pasta {tmp}/mesa", rodar({"FABRICA_MODO": "mesa"}))
+            self.assertIn("ARGS:-m mesa vigiar --servir --fonte binance", rodar({"FABRICA_MODO": "mesa", "MESA_FONTE": "binance"}))
+            self.assertIn("ARGS:-m fabrica painel --com-maestro", rodar({}))              # sem FABRICA_MODO volta à fábrica

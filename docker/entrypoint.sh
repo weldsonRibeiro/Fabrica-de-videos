@@ -25,6 +25,11 @@ if [ "$(id -u)" = "0" ]; then
 fi
 
 if [ "$#" -eq 0 ]; then
-  set -- python -m fabrica painel --com-maestro   # host/porta/provedor vêm das variáveis de ambiente
+  if [ "${FABRICA_MODO:-}" = "mesa" ]; then
+    # Mesa de operações (Bitcoin, SIMULAÇÃO): vigia 24 h + página de status. Para voltar à fábrica de vídeos, apague FABRICA_MODO.
+    set -- python -m mesa vigiar --servir --fonte "${MESA_FONTE:-coinbase}" --pasta "${MESA_PASTA:-/data/mesa}"
+  else
+    set -- python -m fabrica painel --com-maestro   # host/porta/provedor vêm das variáveis de ambiente
+  fi
 fi
 exec "$@"
