@@ -45,7 +45,7 @@ fabrica/
 ├── jogo.py         # carteira: vídeo = despesa, view = moeda (idempotente)
 ├── armazem.py      # estado em JSON, escrita atômica (sobrevive a travas e reinícios)
 ├── demo.py         # dados de demonstração (um dia inventado)
-├── painel.py       # painel web de aprovação (+ web/index.html)
+├── painel.py       # painel web (+ web/: index.html, escritorio.js, escritorio-motor.js)
 ├── doctor.py       # `fabrica doctor`: o que falta antes de rodar
 ├── env.py / fuso.py # .env automático; relógio no fuso do dono
 ├── cli.py          # linha de comando
@@ -134,13 +134,16 @@ python -m fabrica --dados dados-demo --canais canais-demo.json demo      # cria 
 FABRICA_PAINEL_CHAVE=<16+ caracteres> python -m fabrica --dados dados-demo --canais canais-demo.json painel
 ```
 
-A aba **🏢 Escritório** do painel mostra a fábrica funcionando, com os dados reais:
+A tela inicial do painel é o **escritório em pixel art, visto de cima**, tela cheia, com os dados reais da fábrica:
 
-- **6 estações** = as 6 etapas do pipeline: 📚 Estante (pesquisa), ✍️ Roteiro, 🎙️ Cabine (narração), 🖼️ Quadro (cenas), 🎞️ Montagem, 🎨 Thumbnail. A estação com trabalho em andamento acende; a que está pausada fica tracejada em âmbar.
-- **Cada vídeo em produção é um funcionário** (cor e iniciais do canal) que **anda até a estação da etapa atual**; pausado por limite/erro, ele fica parado "dormindo" (💤) até a hora de retomar.
-- **Agenda do Maestro** na parede (vídeos de hoje, com cor por status), **caixa de aprovação** com o número de vídeos esperando você (toque para ir aprovar) e **cofre** com o saldo de moedas.
-- Abaixo: legenda com o que cada funcionário está fazendo e a barra de progresso, **extrato** da empresa (despesas de produção, moedas de views) e a lista de vídeos.
-- Funciona em modo claro e escuro, respeita "reduzir movimento" e atualiza sozinho a cada 10 s.
+- **Uma sala por canal** (piso de cor própria, com o nome e o nível "Nv"), mais a **Sala de descanso** (onde você aparece, de terno) e a **Sala do Maestro** (agenda do dia no quadro, caixa de aprovação e cofre).
+- **Cada canal tem um agente** que **anda até a estação da etapa em andamento**: 📚 estante (pesquisa) → ✍️ mesa (roteiro, sentado) → 🎙️ cabine (narração, com ondas de voz) → 🖼️ cavalete (cenas, rabiscando) → 🎞️ computador (montagem, linha do tempo) → 🎨 mesa de arte (thumbnail). Fora do trabalho, passeia pela sala.
+- **Balões**: `…` pensando/trabalhando, ⏳ pausado (limite da IA; retoma sozinho), ✓ vídeo pronto esperando você, `!` para você quando há aprovações.
+- **HUD**: saldo de moedas, ganho por hora (views das últimas 24 h), gasto de hoje e o botão amarelo **Painel**.
+- **Câmera**: arraste para mover, pince (ou role o mouse) para dar zoom, toque no nome de uma sala para aproximar, toque num agente para ver o que ele faz (etapa, tema, progresso) e toque na caixa de aprovação para ir aprovar.
+- **Painel** (botão amarelo): *Aprovar*, *Agenda* (Maestro ligado/parado, próximas produções, a semana), *Canais* (perfis), *Caixa* (extrato) e *Fábrica* (linha de produção e todos os vídeos).
+- Tudo é desenhado em canvas (sem imagens) em `fabrica/web/escritorio.js` (peças) e `escritorio-motor.js` (agentes e câmera). Respeita "reduzir movimento".
+- O **nível da sala** é provisório: 1 + (vídeos agendados no canal ÷ 3). Dá para trocar a regra quando os upgrades do jogo existirem.
 
 Os canais ficam em [`canais.example.json`](canais.example.json) (nome, nicho, horário de início,
 lista de temas e um **perfil** opcional: voz, tom, público, estilo visual, o que evitar, nº de cenas e

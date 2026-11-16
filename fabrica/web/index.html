@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3e6cf">
 <title>Fábrica de Vídeos</title>
 <style>
   :root {
@@ -73,33 +74,7 @@
               background: var(--alerta); color: #1a1100; }
   [hidden] { display: none !important; }
 
-  /* ---- escritório */
-  .cena { background: var(--card); border: 1px solid var(--linha); border-radius: var(--raio); padding: 6px; }
-  .cena svg { display: block; width: 100%; height: auto; }
-  .cena text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  .rotulo { font-size: 9.5px; font-weight: 700; fill: var(--suave); text-anchor: middle; letter-spacing: .02em; }
-  .estacao .base { fill: var(--piso2); }
-  .estacao.ativa .base { fill: color-mix(in srgb, var(--marca) 16%, var(--piso2)); stroke: var(--marca); stroke-width: 1.5; }
-  .estacao.ativa .pulso { animation: pulso 1.6s ease-in-out infinite; }
-  .estacao.parada .base { stroke: var(--alerta); stroke-width: 1.5; stroke-dasharray: 3 3; }
-  @keyframes pulso { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
-  .onda { animation: onda 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-  .estacao:not(.ativa) .onda { animation: none; opacity: .25; }
-  @keyframes onda { 0%, 100% { transform: scaleY(.45); } 50% { transform: scaleY(1); } }
-  .trilha { animation: trilha 2.4s linear infinite; }
-  .estacao:not(.ativa) .trilha { animation: none; }
-  @keyframes trilha { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -24; } }
-  .func { transition: transform 1.4s cubic-bezier(.45, .05, .25, 1); }
-  .func .corpo { animation: balanco .9s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
-  .func.parado .corpo { animation: none; }
-  @keyframes balanco { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.6px); } }
-  .zzz { display: none; font-size: 9px; font-weight: 800; fill: var(--alerta); animation: sobe 2.2s ease-in-out infinite; }
-  .func.parado .zzz { display: block; }
-  @keyframes sobe { 0% { opacity: 0; transform: translateY(2px); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(-7px); } }
-  .toque { cursor: pointer; }
-  .selo-n { font-size: 9px; font-weight: 800; fill: #1a1100; text-anchor: middle; }
-  .moeda-txt { font-size: 11px; font-weight: 800; text-anchor: middle; }
-  @media (prefers-reduced-motion: reduce) { .func, .func .corpo, .onda, .trilha, .zzz, .pulso { animation: none !important; transition: none !important; } }
+
   .legenda { margin-top: 12px; }
   .func-linha { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--linha); font-size: .92rem; }
   .func-linha:last-child { border-bottom: 0; }
@@ -116,37 +91,91 @@
   .canal dt { color: var(--suave); } .canal dd { margin: 0; overflow-wrap: anywhere; }
   .canal .vazio-perfil { color: var(--suave); font-size: .88rem; }
   .extrato .linha .v { font-weight: 700; white-space: nowrap; } .v.pos { color: var(--ok); } .v.neg { color: var(--erro); }
+
+  /* ---- jogo (tela cheia) ---- */
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { background: #f3e6cf; }
+  #jogo { position: fixed; inset: 0; background: #f3e6cf; }
+  #mapa { width: 100%; height: 100%; display: block; touch-action: none; image-rendering: pixelated; cursor: grab; }
+  #hud { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; gap: 10px; align-items: center; justify-content: space-between; pointer-events: none; }
+  .pilula-hud { pointer-events: auto; display: flex; align-items: center; gap: 10px; background: rgba(24, 26, 33, .92); color: #fff; border-radius: 999px;
+                padding: 8px 14px; font-weight: 800; font-size: .95rem; box-shadow: 0 4px 14px rgba(0,0,0,.25); min-width: 0; }
+  .pilula-hud .moeda { color: #ffd34d; } .pilula-hud small { font-weight: 700; font-size: .72rem; opacity: .85; white-space: nowrap; }
+  .pilula-hud .pos { color: #6fe3a6; } .pilula-hud .neg { color: #ff8a7a; }
+  #btn-painel { pointer-events: auto; border: 0; border-radius: 999px; background: #ffd34d; color: #3a2a00; font: inherit; font-weight: 800;
+                padding: 11px 18px; box-shadow: 0 4px 14px rgba(0,0,0,.25); cursor: pointer; min-height: 44px; }
+  #btn-painel .contador { background: #e5484d; color: #fff; }
+  #zoom { position: absolute; right: 10px; bottom: max(16px, env(safe-area-inset-bottom)); display: grid; gap: 8px; }
+  #zoom button { width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(24,26,33,.92); color: #fff; font-size: 1.3rem; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.25); cursor: pointer; }
+  #dica { position: absolute; left: 10px; right: 10px; top: calc(max(10px, env(safe-area-inset-top)) + 62px); width: max-content; max-width: calc(100% - 20px); margin: 0 auto; background: rgba(24,26,33,.78); color: #fff; font-size: .78rem; padding: 6px 12px; border-radius: 999px; pointer-events: none; white-space: nowrap; font-size: .74rem; transition: opacity .6s; }
+  #cartao-agente { position: absolute; left: 10px; right: 64px; bottom: max(16px, env(safe-area-inset-bottom)); background: rgba(24,26,33,.95); color: #fff; border-radius: 16px; padding: 12px 14px; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+  #cartao-agente h3 { margin: 0; font-size: 1.05rem; } #cartao-agente .sub { opacity: .8; font-size: .85rem; margin: 2px 0 8px; }
+  #cartao-agente .barra { background: rgba(255,255,255,.2); } #cartao-agente .fechar { position: absolute; top: 8px; right: 10px; background: none; border: 0; color: #fff; font-size: 1.2rem; cursor: pointer; }
+  #cartao-agente .btn { margin-top: 10px; border: 0; border-radius: 10px; padding: 10px 14px; background: #ffd34d; color: #3a2a00; font: inherit; font-weight: 800; cursor: pointer; }
+
+  /* ---- painel (folha por cima do jogo) ---- */
+  #painel { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; z-index: 5; -webkit-overflow-scrolling: touch; }
+  #painel .miolo { max-width: 720px; margin: 0 auto; padding: 12px 16px 60px; }
+  #painel header.topo { display: block; justify-content: normal; align-items: normal; position: sticky; top: 0; z-index: 2; background: var(--bg); padding: max(10px, env(safe-area-inset-top)) 0 8px; margin: 0 0 4px; }
+  .topo-linha h1 { font-size: 1.25rem; margin: 0; white-space: nowrap; }
+  .voltar { white-space: nowrap; }
+  .topo-linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .voltar { border: 0; border-radius: 999px; background: var(--card); border: 1px solid var(--linha); color: var(--texto); font: inherit; font-weight: 700; padding: 9px 16px; min-height: 44px; cursor: pointer; }
+  nav.abas { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 4px; scrollbar-width: none; background: none; border: 0; margin: 0; }
+  nav.abas::-webkit-scrollbar { display: none; }
+  nav.abas button { flex: 0 0 auto; padding: 0 16px; border-radius: 999px; border: 1px solid var(--linha); background: var(--card); color: var(--suave); font: inherit; font-weight: 700; min-height: 44px; cursor: pointer; }
+  nav.abas button[aria-selected=true] { background: var(--marca); color: var(--marca-texto); border-color: var(--marca); }
+  .estado-maestro { display: flex; gap: 10px; align-items: center; }
+  .luz { width: 10px; height: 10px; border-radius: 50%; background: var(--suave); flex: 0 0 auto; } .luz.ligado { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); }
+  .fila { display: grid; grid-template-columns: 3.6em 1fr; gap: 2px 10px; padding: 11px 0; border-bottom: 1px solid var(--linha); align-items: start; }
+  .fila .selo { grid-column: 2; justify-self: start; margin-top: 2px; }
+  .fila:last-child { border-bottom: 0; } .fila .hora { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 3.4em; }
+  table.semana { width: 100%; border-collapse: collapse; font-size: .9rem; } table.semana th { text-align: left; color: var(--suave); font-size: .75rem; text-transform: uppercase; padding: 6px 4px; }
+  table.semana td { padding: 10px 4px; border-top: 1px solid var(--linha); }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <h1>🏭 Fábrica de Vídeos</h1>
-    <div id="saldo" class="saldo" title="Saldo da empresa no jogo">—</div>
-  </header>
+<div id="jogo">
+  <canvas id="mapa" aria-label="Escritório da fábrica de vídeos: salas dos canais, agentes trabalhando e sala de descanso"></canvas>
+  <div id="hud">
+    <div class="pilula-hud" title="Saldo da empresa no jogo">
+      <span class="moeda">🪙 <b id="h-saldo">—</b></span>
+      <small id="h-taxa" class="pos"></small><small id="h-gasto" class="neg"></small>
+    </div>
+    <button id="btn-painel" type="button">Painel<span id="h-pend" class="contador" hidden>0</span></button>
+  </div>
+  <div id="zoom"><button id="z-mais" aria-label="Aproximar">+</button><button id="z-menos" aria-label="Afastar">−</button><button id="z-ajustar" aria-label="Ver tudo">⤢</button></div>
+  <div id="dica">Arraste para mover · pince para dar zoom · toque numa sala</div>
+  <div id="cartao-agente" hidden></div>
+</div>
 
-  <nav class="abas" role="tablist" aria-label="Seções">
-    <button role="tab" id="aba-escritorio" aria-selected="true" aria-controls="painel-escritorio">🏢 Escritório</button>
-    <button role="tab" id="aba-aprovar" aria-selected="false" aria-controls="painel-aprovar">✅ Aprovar<span id="contador" class="contador" hidden>0</span></button>
-  </nav>
+<div id="painel" hidden>
+  <div class="miolo">
+    <header class="topo">
+      <div class="topo-linha"><h1>🏭 Painel</h1><button class="voltar" id="btn-voltar" type="button">← Escritório</button></div>
+      <nav class="abas" role="tablist" aria-label="Seções do painel">
+        <button role="tab" data-aba="aprovar" aria-selected="true">✅ Aprovar<span id="contador" class="contador" hidden>0</span></button>
+        <button role="tab" data-aba="agenda" aria-selected="false">📅 Agenda</button>
+        <button role="tab" data-aba="canais" aria-selected="false">📺 Canais</button>
+        <button role="tab" data-aba="caixa" aria-selected="false">🪙 Caixa</button>
+        <button role="tab" data-aba="fabrica" aria-selected="false">🏭 Fábrica</button>
+      </nav>
+    </header>
+    <section data-painel="aprovar" role="tabpanel"><h2 id="titulo-pendentes">Para aprovar</h2><div id="pendentes"></div></section>
+    <section data-painel="agenda" role="tabpanel" hidden>
+      <h2>Agenda de produção</h2>
+      <div class="card"><div class="estado-maestro"><span id="luz-maestro" class="luz"></span><div><strong id="txt-maestro">Maestro</strong><div class="meta" id="sub-maestro"></div></div></div></div>
+      <h2>Próximas produções</h2><div id="proximas" class="card"></div>
+      <h2>A semana</h2><div class="card"><table class="semana"><thead><tr><th>Canal</th><th>Hora</th><th>Dias</th></tr></thead><tbody id="semana"></tbody></table></div>
+    </section>
+    <section data-painel="canais" role="tabpanel" hidden><h2>Canais e perfis</h2><div id="canais" class="canais"></div></section>
+    <section data-painel="caixa" role="tabpanel" hidden><h2>Caixa da empresa</h2><div id="extrato" class="card extrato"></div></section>
+    <section data-painel="fabrica" role="tabpanel" hidden><h2>Na linha de produção</h2><div id="legenda" class="card legenda"></div><h2>Todos os vídeos</h2><div id="fabrica" class="card"></div></section>
+  </div>
+</div>
 
-  <section id="painel-escritorio" role="tabpanel" aria-labelledby="aba-escritorio">
-    <div class="cena"><svg id="cena" viewBox="0 0 360 436" role="img" aria-label="Escritório da fábrica de vídeos"></svg></div>
-    <div id="legenda" class="card legenda"></div>
-    <h2>Caixa da empresa</h2>
-    <div id="extrato" class="card extrato"></div>
-    <h2>Canais e perfis</h2>
-    <div id="canais" class="canais"></div>
-    <h2>Na fábrica</h2>
-    <div id="fabrica" class="card"></div>
-  </section>
-
-  <section id="painel-aprovar" role="tabpanel" aria-labelledby="aba-aprovar" hidden>
-    <h2 id="titulo-pendentes">Para aprovar</h2>
-    <div id="pendentes"></div>
-  </section>
-</main>
-
+<script src="/escritorio.js"></script>
+<script src="/escritorio-motor.js"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -160,6 +189,7 @@ const el = (tag, props = {}, ...filhos) => {
 };
 const ROTULOS = { agendado: "na agenda", em_producao: "produzindo", pausado: "pausado (retoma sozinho)",
   aguardando_aprovacao: "aguardando você", aprovado: "aprovado", agendado_no_canal: "agendado no canal", falhou: "falhou" };
+
 
 let estado = null;
 const cartoes = new Map(); // id -> elemento (preserva o que você já escolheu quando a lista atualiza)
@@ -231,14 +261,67 @@ function cartao(v) {
   return raiz;
 }
 
-function desenhar() {
-  const s = $("saldo");
-  s.textContent = `🪙 ${estado.saldo.toFixed(2)}`;
-  s.className = "saldo " + (estado.saldo < 0 ? "neg" : "pos");
 
-  const c = $("contador");
-  c.textContent = estado.pendentes.length; c.hidden = !estado.pendentes.length;
-  desenharCena(); desenharLegenda(); desenharExtrato(); desenharCanais();
+const moeda = (n) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const hhmm = (iso) => iso.slice(11, 16);
+const quando = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)} ${iso.slice(11, 16)}`;
+const CORES = ["#3e63dd", "#e5484d", "#30a46c", "#d9822b", "#8e4ec6", "#0a8aa6", "#c2417a"];
+const corDoCanal = (nome) => { let h = 0; for (const c of nome) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CORES[h % CORES.length]; };
+const iniciais = (nome) => nome.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("");
+
+
+const ESTACAO_NOME = { pesquisa: "pesquisando na estante", roteiro: "escrevendo o roteiro", narracao: "gravando a narração",
+  cenas: "desenhando as cenas", montagem: "montando o vídeo", thumbnail: "criando a thumbnail" };
+const ETAPA_ROTULO = { pesquisa: "Estante", roteiro: "Roteiro", narracao: "Cabine", cenas: "Quadro", montagem: "Montagem", thumbnail: "Thumbnail" };
+
+/* ---------- painel: abas ---------- */
+function mostrarAba(qual) {
+  document.querySelectorAll("[data-painel]").forEach((s) => { s.hidden = s.dataset.painel !== qual; });
+  document.querySelectorAll("nav.abas button").forEach((b) => b.setAttribute("aria-selected", b.dataset.aba === qual));
+  $("painel").scrollTo({ top: 0 });
+}
+function abrirPainel(aba) { $("painel").hidden = false; if (aba) mostrarAba(aba); }
+function fecharPainel() { $("painel").hidden = true; }
+document.querySelectorAll("nav.abas button").forEach((b) => { b.onclick = () => mostrarAba(b.dataset.aba); });
+$("btn-painel").onclick = () => abrirPainel(estado && estado.pendentes.length ? "aprovar" : "agenda");
+$("btn-voltar").onclick = fecharPainel;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharPainel(); });
+
+/* ---------- jogo ---------- */
+const jogo = Escritorio.criar($("mapa"), {
+  onAprovar: () => abrirPainel("aprovar"),
+  onAgente: (info) => cartaoAgente(info),
+});
+$("z-mais").onclick = () => jogo.zoom(1.5);
+$("z-menos").onclick = () => jogo.zoom(1 / 1.5);
+$("z-ajustar").onclick = () => jogo.ajustar();
+setTimeout(() => { $("dica").style.opacity = 0; }, 7000);
+
+function cartaoAgente(info) {
+  const c = $("cartao-agente");
+  c.replaceChildren();
+  if (!info) { c.hidden = true; return; }
+  const fechar = el("button", { class: "fechar", type: "button", texto: "✕", ariaLabel: "Fechar" });
+  fechar.onclick = () => { c.hidden = true; jogo.fechar(); };
+  const rotuloStatus = info.dono ? "online" : { trabalhando: "trabalhando", pausado: "pausado — retoma sozinho", ocioso: "livre" }[info.status];
+  c.append(fechar, el("h3", { texto: `${info.nome} · ${info.canal}` }), el("div", { class: "sub", texto: `${rotuloStatus} · ${info.verbo}` }));
+  if (info.tema) c.append(el("div", { texto: `“${info.tema}”` }));
+  if (info.progresso !== null && info.progresso !== undefined) c.append(el("div", { class: "barra" }, el("i", { style: `width:${Math.round(info.progresso * 100)}%` })));
+  if (info.retomar_em) c.append(el("div", { class: "sub", texto: `retoma às ${hhmm(info.retomar_em)}` }));
+  if (info.dono && info.pendentes) { const b = el("button", { class: "btn", type: "button", texto: `Aprovar ${info.pendentes} vídeo${info.pendentes > 1 ? "s" : ""}` }); b.onclick = () => abrirPainel("aprovar"); c.append(b); }
+  c.hidden = false;
+}
+
+function desenharHud() {
+  $("h-saldo").textContent = moeda(estado.saldo);
+  $("h-taxa").textContent = estado.ganho_hora ? `+${moeda(estado.ganho_hora)}/h` : "";
+  $("h-gasto").textContent = estado.gasto_hoje ? `−${moeda(estado.gasto_hoje)} hoje` : "";
+  const n = estado.pendentes.length;
+  for (const id of ["h-pend", "contador"]) { const c = $(id); c.textContent = n; c.hidden = !n; }
+}
+
+/* ---------- aprovação ---------- */
+function desenharPendentes() {
   $("titulo-pendentes").textContent = `Para aprovar (${estado.pendentes.length})`;
   const area = $("pendentes");
   const ids = new Set(estado.pendentes.map((v) => v.id));
@@ -247,9 +330,42 @@ function desenhar() {
   const vazio = area.querySelector(".vazio");
   if (!estado.pendentes.length && !vazio) area.append(el("div", { class: "vazio", texto: "Nada esperando você. A fábrica está trabalhando. 🎬" }));
   if (estado.pendentes.length && vazio) vazio.remove();
+}
 
-  const f = $("fabrica");
-  f.replaceChildren();
+/* ---------- agenda ---------- */
+function desenharAgenda() {
+  const ligado = estado.ultimo_tick && (new Date(estado.agora) - new Date(estado.ultimo_tick)) < 180000;
+  $("luz-maestro").classList.toggle("ligado", !!ligado);
+  $("txt-maestro").textContent = ligado ? "Maestro ligado" : (estado.ultimo_tick ? "Maestro parado" : "Maestro aguardando a primeira batida");
+  $("sub-maestro").textContent = estado.ultimo_tick ? `última batida às ${hhmm(estado.ultimo_tick)} · solta um vídeo por canal na hora certa e retoma sozinho quando a IA bate no limite` : "sem registro de batida neste servidor (use --com-maestro ou um cron)";
+  const caixa = $("proximas"); caixa.replaceChildren();
+  const fila = estado.videos.filter((v) => ["agendado", "em_producao", "pausado"].includes(v.status)).sort((a, b) => a.producao_em.localeCompare(b.producao_em));
+  if (!fila.length) caixa.append(el("div", { class: "vazio", texto: "Nada na fila agora." }));
+  for (const v of fila) {
+    const quem = v.status === "agendado" ? `abre às ${hhmm(v.producao_em)}` : v.status === "em_producao" ? `produzindo · ${ESTACAO_NOME[v.etapa] || ""}` : `pausado${v.retomar_em ? ` · retoma ${hhmm(v.retomar_em)}` : ""}`;
+    caixa.append(el("div", { class: "fila" }, el("span", { class: "hora", texto: hhmm(v.producao_em) }),
+      el("div", { style: "min-width:0" }, el("strong", { texto: v.tema }), el("div", { class: "meta", texto: `${v.canal} · ${quando(v.producao_em)}` })),
+      el("span", { class: "selo s-" + v.status, texto: quem })));
+  }
+  const t = $("semana"); t.replaceChildren();
+  for (const c of estado.canais) t.append(el("tr", {}, el("td", { texto: c.nome }), el("td", { texto: c.inicio }), el("td", { texto: "todos os dias" })));
+}
+
+/* ---------- na linha de produção ---------- */
+function desenharLegenda() {
+  const l = $("legenda"); l.replaceChildren();
+  const ativos = estado.videos.filter((v) => (v.status === "em_producao" || v.status === "pausado") && v.etapa);
+  if (!ativos.length) { l.append(el("div", { class: "vazio", texto: "Ninguém na linha agora. 😴" })); return; }
+  for (const v of ativos) {
+    const pausado = v.status === "pausado";
+    const txt = pausado ? `parado na etapa “${(ETAPA_ROTULO[v.etapa] || "").toLowerCase()}”${v.retomar_em ? ` · retoma ${hhmm(v.retomar_em)}` : ""}` : `${ESTACAO_NOME[v.etapa]} (${v.etapas_feitas + 1}/${v.etapas_total})`;
+    l.append(el("div", { class: "func-linha" }, el("div", { class: "avatar", style: `background:${corDoCanal(v.canal)}`, texto: iniciais(v.canal) }),
+      el("div", { class: "txt" }, el("strong", { texto: v.tema }), el("div", { class: "meta", texto: `${v.canal} · ${txt}` }),
+        el("div", { class: "barra" }, el("i", { style: `width:${(v.etapas_feitas / v.etapas_total) * 100}%` })))));
+  }
+}
+function desenharLista() {
+  const f = $("fabrica"); f.replaceChildren();
   if (!estado.videos.length) f.append(el("div", { class: "vazio", texto: "Nenhum vídeo na agenda ainda." }));
   for (const v of estado.videos) {
     const detalhe = v.retomar_em ? ` · retoma ${quando(v.retomar_em)}` : "";
@@ -258,236 +374,6 @@ function desenhar() {
       el("span", { class: "selo s-" + v.status, texto: ROTULOS[v.status] || v.status })));
   }
 }
-
-
-const NS = "http://www.w3.org/2000/svg";
-const sv = (tag, attrs = {}, ...filhos) => {
-  const n = document.createElementNS(NS, tag);
-  for (const [k, v] of Object.entries(attrs)) { if (k === "texto") n.textContent = v; else n.setAttribute(k, v); }
-  for (const f of filhos) if (f) n.append(f);
-  return n;
-};
-const moeda = (n) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const hhmm = (iso) => iso.slice(11, 16);
-const quando = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)} ${iso.slice(11, 16)}`;
-
-const ETAPAS = ["pesquisa", "roteiro", "narracao", "cenas", "montagem", "thumbnail"];
-const ESTACOES = {
-  pesquisa:  { nome: "Estante",   verbo: "pesquisando na estante",   x: 12,  y: 14 },
-  roteiro:   { nome: "Roteiro",   verbo: "escrevendo o roteiro",     x: 125, y: 14 },
-  narracao:  { nome: "Cabine",    verbo: "gravando a narração",      x: 238, y: 14 },
-  cenas:     { nome: "Quadro",    verbo: "desenhando as cenas",      x: 12,  y: 164 },
-  montagem:  { nome: "Montagem",  verbo: "montando o vídeo",         x: 125, y: 164 },
-  thumbnail: { nome: "Thumbnail", verbo: "criando a thumbnail",      x: 238, y: 164 },
-};
-const CORES = ["#3e63dd", "#e5484d", "#30a46c", "#d9822b", "#8e4ec6", "#0a8aa6", "#c2417a"];
-const corDoCanal = (nome) => { let h = 0; for (const c of nome) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CORES[h % CORES.length]; };
-const iniciais = (nome) => nome.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("");
-
-/* ---- desenho de cada estação (caixa de 100 x 100) */
-const R = (x, y, w, h, cls, extra = {}) => sv("rect", { x, y, width: w, height: h, rx: 2, class: cls, ...extra });
-const MOVEL = { fill: "var(--movel)", stroke: "var(--movel-linha)", "stroke-width": 1 };
-function arte(etapa) {
-  const g = sv("g");
-  if (etapa === "pesquisa") {              // estante com livros
-    g.append(sv("rect", { x: 14, y: 8, width: 72, height: 78, rx: 3, ...MOVEL }));
-    const livros = ["--livro1", "--livro2", "--livro3", "--livro4", "--livro5"];
-    [0, 1, 2].forEach((prat) => {
-      const y = 12 + prat * 25;
-      g.append(sv("line", { x1: 14, x2: 86, y1: y + 21, y2: y + 21, stroke: "var(--movel-linha)", "stroke-width": 1.5 }));
-      let x = 19;
-      for (let i = 0; i < 6; i++) {
-        const w = 6 + ((i + prat) % 3) * 2, h = 15 + ((i * 3 + prat) % 4) * 1.5;
-        g.append(sv("rect", { x, y: y + 21 - h, width: w, height: h, rx: 1, fill: `var(${livros[(i + prat * 2) % 5]})` }));
-        x += w + 1.6;
-      }
-    });
-  } else if (etapa === "roteiro") {         // mesa com folha, caneta e abajur
-    g.append(sv("rect", { x: 6, y: 44, width: 88, height: 40, rx: 4, fill: "var(--madeira)" }));
-    g.append(sv("rect", { x: 6, y: 78, width: 88, height: 8, rx: 3, fill: "var(--madeira-esc)" }));
-    g.append(sv("rect", { x: 26, y: 50, width: 34, height: 26, rx: 2, fill: "var(--papel)", stroke: "var(--movel-linha)" }));
-    [57, 62, 67, 72].forEach((y, i) => g.append(sv("line", { x1: 30, x2: 55 - (i % 2) * 6, y1: y - 2, y2: y - 2, stroke: "var(--movel-linha)", "stroke-width": 1.4 })));
-    g.append(sv("line", { x1: 66, y1: 72, x2: 80, y2: 54, stroke: "var(--marca)", "stroke-width": 2.4, "stroke-linecap": "round" }));
-    g.append(sv("line", { x1: 82, y1: 46, x2: 74, y2: 24, stroke: "var(--movel-linha)", "stroke-width": 2 }));
-    g.append(sv("path", { d: "M66 26 L82 26 L78 14 L70 14 Z", fill: "var(--brilho)" }));
-  } else if (etapa === "narracao") {        // cabine com microfone
-    g.append(sv("rect", { x: 16, y: 8, width: 68, height: 78, rx: 8, ...MOVEL }));
-    g.append(sv("rect", { x: 24, y: 16, width: 52, height: 40, rx: 4, fill: "var(--tela)", opacity: .9 }));
-    g.append(sv("circle", { cx: 50, cy: 34, r: 7, fill: "none", stroke: "var(--movel-linha)", "stroke-width": 2 }));
-    g.append(sv("line", { x1: 50, y1: 41, x2: 50, y2: 56, stroke: "var(--movel-linha)", "stroke-width": 2 }));
-    [[32, 8], [38, 16], [62, 16], [68, 8]].forEach(([x, h], i) =>
-      g.append(sv("rect", { class: "onda", x: x - 1.5, y: 36 - h / 2, width: 3, height: h, rx: 1.5, fill: "var(--marca)", style: `animation-delay:${i * .18}s` })));
-    g.append(sv("rect", { x: 24, y: 62, width: 52, height: 16, rx: 3, fill: "var(--piso2)" }));
-    g.append(sv("circle", { cx: 34, cy: 70, r: 3, fill: "var(--erro)" }));
-  } else if (etapa === "cenas") {           // quadro branco com cenas desenhadas
-    g.append(sv("rect", { x: 6, y: 10, width: 88, height: 62, rx: 3, fill: "var(--papel)", stroke: "var(--movel-linha)", "stroke-width": 2 }));
-    [[12, "var(--livro2)"], [38, "var(--livro3)"], [64, "var(--livro4)"]].forEach(([x, cor], i) => {
-      g.append(sv("rect", { x, y: 18, width: 24, height: 18, rx: 2, fill: "none", stroke: "var(--movel-linha)", "stroke-width": 1.2 }));
-      g.append(sv("path", { d: `M${x + 2} 34 L${x + 9} 24 L${x + 14} 30 L${x + 18} 26 L${x + 22} 34 Z`, fill: cor, opacity: .85 }));
-      g.append(sv("circle", { cx: x + 18, cy: 22, r: 2.2, fill: "var(--brilho)" }));
-    });
-    g.append(sv("line", { x1: 12, y1: 50, x2: 80, y2: 50, class: "trilha", stroke: "var(--marca)", "stroke-width": 2, "stroke-dasharray": "5 7", "stroke-linecap": "round" }));
-    g.append(sv("line", { x1: 12, y1: 60, x2: 52, y2: 60, stroke: "var(--movel-linha)", "stroke-width": 1.6 }));
-    g.append(sv("rect", { x: 30, y: 72, width: 40, height: 5, rx: 2, fill: "var(--movel-linha)" }));
-  } else if (etapa === "montagem") {        // monitor com linha do tempo
-    g.append(sv("rect", { x: 10, y: 8, width: 80, height: 54, rx: 4, fill: "var(--tela)", stroke: "var(--movel-linha)", "stroke-width": 2 }));
-    g.append(sv("rect", { x: 16, y: 14, width: 30, height: 20, rx: 2, fill: "var(--livro2)", opacity: .75 }));
-    g.append(sv("path", { d: "M26 19 L26 29 L35 24 Z", fill: "#fff" }));
-    [[16, 40, 26, "--livro3"], [44, 40, 18, "--livro4"], [64, 40, 20, "--livro5"], [16, 48, 14, "--livro1"], [32, 48, 34, "--livro2"]].forEach(([x, y, w, c]) =>
-      g.append(sv("rect", { x, y, width: w, height: 5, rx: 1.5, fill: `var(${c})`, opacity: .9 })));
-    g.append(sv("line", { x1: 40, y1: 36, x2: 40, y2: 57, stroke: "var(--brilho)", "stroke-width": 1.4 }));
-    g.append(sv("rect", { x: 44, y: 62, width: 12, height: 8, ...MOVEL }));
-    g.append(sv("rect", { x: 26, y: 70, width: 48, height: 12, rx: 3, ...MOVEL }));
-  } else {                                   // thumbnail: cavalete com a arte
-    g.append(sv("line", { x1: 50, y1: 66, x2: 30, y2: 90, stroke: "var(--madeira-esc)", "stroke-width": 3, "stroke-linecap": "round" }));
-    g.append(sv("line", { x1: 50, y1: 66, x2: 70, y2: 90, stroke: "var(--madeira-esc)", "stroke-width": 3, "stroke-linecap": "round" }));
-    g.append(sv("rect", { x: 12, y: 12, width: 76, height: 54, rx: 3, fill: "var(--papel)", stroke: "var(--madeira)", "stroke-width": 3 }));
-    g.append(sv("rect", { x: 18, y: 18, width: 64, height: 42, rx: 2, fill: "var(--livro2)" }));
-    g.append(sv("path", { d: "M18 60 L40 36 L54 50 L66 40 L82 60 Z", fill: "var(--livro3)", opacity: .9 }));
-    g.append(sv("path", { d: "M70 22 l2.4 5 5.4.7 -4 3.7 1 5.4 -4.8 -2.7 -4.8 2.7 1 -5.4 -4 -3.7 5.4 -.7 z", fill: "var(--brilho)" }));
-    g.append(sv("rect", { x: 22, y: 50, width: 26, height: 5, rx: 1.5, fill: "#fff", opacity: .9 }));
-  }
-  return g;
-}
-
-/* ---- rodapé do escritório: agenda, caixa de aprovação e cofre */
-function agenda(g, e) {
-  g.append(sv("rect", { x: 4, y: 6, width: 100, height: 84, rx: 6, ...MOVEL }));
-  g.append(sv("rect", { x: 4, y: 6, width: 100, height: 16, rx: 6, fill: "var(--marca)" }));
-  g.append(sv("text", { x: 54, y: 18, "text-anchor": "middle", "font-size": 9.5, "font-weight": 800, fill: "var(--marca-texto)", texto: "🎼 MAESTRO · HOJE" }));
-  const hoje = e.videos.filter((v) => v.producao_em.slice(0, 10) === e.hoje).sort((a, b) => a.producao_em.localeCompare(b.producao_em));
-  hoje.slice(0, 3).forEach((v, i) => {
-    const y = 36 + i * 15, cor = { agendado: "var(--suave)", em_producao: "var(--marca)", pausado: "var(--alerta)", falhou: "var(--erro)" }[v.status] || "var(--ok)";
-    g.append(sv("circle", { cx: 13, cy: y - 3, r: 3, fill: cor }));
-    g.append(sv("text", { x: 21, y, "font-size": 8.5, "font-weight": 700, fill: "var(--texto)", texto: `${hhmm(v.producao_em)} ${v.tema.length > 12 ? v.tema.slice(0, 11) + "…" : v.tema}` }));
-  });
-  if (!hoje.length) g.append(sv("text", { x: 54, y: 52, "text-anchor": "middle", "font-size": 8.5, fill: "var(--suave)", texto: "agenda vazia" }));
-  if (hoje.length > 3) g.append(sv("text", { x: 54, y: 77, "text-anchor": "middle", "font-size": 8, fill: "var(--suave)", texto: `+${hoje.length - 3} mais hoje` }));
-  const sub = e.videos.filter((v) => v.status === "agendado_no_canal").length;
-  g.append(sv("text", { x: 54, y: 86, "text-anchor": "middle", "font-size": 8, fill: "var(--ok)", "font-weight": 700, texto: sub ? `📺 ${sub} agendado${sub > 1 ? "s" : ""} no canal` : "" }));
-  g.append(sv("text", { class: "rotulo", x: 54, y: 108, texto: "AGENDA" }));
-}
-function caixa(g, n) {
-  g.append(sv("text", { class: "rotulo", x: 50, y: 108, texto: "APROVAÇÃO" }));
-  g.append(sv("rect", { x: 14, y: 52, width: 72, height: 30, rx: 5, fill: "var(--madeira)" }));
-  g.append(sv("rect", { x: 14, y: 72, width: 72, height: 10, rx: 4, fill: "var(--madeira-esc)" }));
-  const folhas = Math.min(n, 4);
-  for (let i = 0; i < Math.max(folhas, 1); i++) {
-    g.append(sv("rect", { x: 22 + i * 2, y: 46 - i * 6, width: 56, height: 10, rx: 2, fill: n ? "var(--papel)" : "none", stroke: "var(--movel-linha)", "stroke-dasharray": n ? "" : "3 3" }));
-  }
-  if (n) {
-    const selo = sv("g");
-    selo.append(sv("circle", { cx: 80, cy: 22, r: 11, fill: "var(--alerta)" }));
-    selo.append(sv("text", { x: 80, y: 26, class: "selo-n", "font-size": 12, texto: String(n) }));
-    selo.append(sv("animate", { attributeName: "opacity", values: "1;.6;1", dur: "1.8s", repeatCount: "indefinite" }));
-    g.append(selo);
-  }
-}
-function cofre(g, saldo) {
-  g.append(sv("rect", { x: 20, y: 12, width: 66, height: 66, rx: 8, ...MOVEL }));
-  g.append(sv("circle", { cx: 53, cy: 40, r: 17, fill: "none", stroke: "var(--movel-linha)", "stroke-width": 3 }));
-  g.append(sv("circle", { cx: 53, cy: 40, r: 5, fill: saldo < 0 ? "var(--erro)" : "var(--ok)" }));
-  [0, 60, 120, 180, 240, 300].forEach((a) => {
-    const r = (a * Math.PI) / 180;
-    g.append(sv("line", { x1: 53 + Math.cos(r) * 5, y1: 40 + Math.sin(r) * 5, x2: 53 + Math.cos(r) * 15, y2: 40 + Math.sin(r) * 15, stroke: "var(--movel-linha)", "stroke-width": 2 }));
-  });
-  g.append(sv("text", { class: "rotulo", x: 53, y: 108, texto: "COFRE" }));
-  g.append(sv("text", { x: 53, y: 92, class: "moeda-txt", fill: saldo < 0 ? "var(--erro)" : "var(--ok)", texto: `🪙 ${moeda(saldo)}` }));
-}
-
-/* ---- cena principal. Os funcionários persistem entre atualizações para poderem andar até a próxima estação. */
-const funcionarios = new Map();
-let camadaFunc = null;
-function montarCena() {
-  const svg = $("cena");
-  svg.replaceChildren();
-  svg.append(sv("rect", { x: 0, y: 0, width: 360, height: 436, rx: 10, fill: "var(--piso)" }));
-  svg.append(sv("rect", { x: 0, y: 0, width: 360, height: 8, fill: "var(--parede)" }));
-  Object.entries(ESTACOES).forEach(([etapa, est]) => {
-    const g = sv("g", { class: "estacao", id: "est-" + etapa, transform: `translate(${est.x} ${est.y})` });
-    g.append(sv("rect", { class: "base pulso", x: 0, y: 0, width: 110, height: 134, rx: 12 }));
-    const arteG = sv("g", { transform: "translate(5 2)" }); arteG.append(arte(etapa)); g.append(arteG);
-    g.append(sv("text", { class: "rotulo", x: 55, y: 128, texto: est.nome.toUpperCase() }));
-    svg.append(g);
-  });
-  const lin3 = 316;
-  svg.append(sv("g", { id: "g-agenda", transform: `translate(12 ${lin3})` }));
-  svg.append(sv("g", { id: "g-caixa", class: "toque", transform: `translate(125 ${lin3})`, role: "button", tabindex: 0, "aria-label": "Abrir vídeos para aprovar" }));
-  svg.append(sv("g", { id: "g-cofre", transform: `translate(238 ${lin3})` }));
-  camadaFunc = sv("g", { id: "funcs" });
-  svg.append(camadaFunc);
-  const abrir = () => mostrarAba("aprovar");
-  $("cena").querySelector("#g-caixa").addEventListener("click", abrir);
-  $("cena").querySelector("#g-caixa").addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); abrir(); } });
-}
-
-function novoFuncionario(v) {
-  const cor = corDoCanal(v.canal);
-  const g = sv("g", { class: "func" });
-  const corpo = sv("g", { class: "corpo" });
-  corpo.append(sv("ellipse", { cx: 0, cy: 12, rx: 9, ry: 2.4, fill: "#000", opacity: .15 }));
-  corpo.append(sv("rect", { x: -7, y: -2, width: 14, height: 14, rx: 6, fill: cor }));
-  corpo.append(sv("circle", { cx: 0, cy: -9, r: 7, fill: "#f2c9a0" }));
-  corpo.append(sv("path", { d: "M-7 -10 Q0 -19 7 -10 Q0 -13 -7 -10 Z", fill: "#2b2f38" }));
-  corpo.append(sv("text", { x: 0, y: 8.4, "text-anchor": "middle", "font-size": 6, "font-weight": 800, fill: "#fff", texto: iniciais(v.canal) }));
-  g.append(corpo, sv("text", { class: "zzz", x: 9, y: -14, texto: "z z" }));
-  return g;
-}
-
-function desenharCena() {
-  const emProd = estado.videos.filter((v) => (v.status === "em_producao" || v.status === "pausado") && v.etapa);
-  const porEstacao = {};
-  emProd.forEach((v) => (porEstacao[v.etapa] ||= []).push(v));
-
-  ETAPAS.forEach((etapa) => {
-    const lista = porEstacao[etapa] || [];
-    const g = $("est-" + etapa);
-    g.classList.toggle("ativa", lista.some((v) => v.status === "em_producao"));
-    g.classList.toggle("parada", lista.length > 0 && lista.every((v) => v.status === "pausado"));
-  });
-
-  const ids = new Set(emProd.map((v) => v.id));
-  for (const [id, no] of funcionarios) if (!ids.has(id)) { no.remove(); funcionarios.delete(id); }
-  for (const [etapa, lista] of Object.entries(porEstacao)) {
-    const est = ESTACOES[etapa];
-    lista.forEach((v, i) => {
-      let no = funcionarios.get(v.id);
-      const x = est.x + 55 + (i - (lista.length - 1) / 2) * 24, y = est.y + 100;
-      if (!no) { no = novoFuncionario(v); no.style.transform = `translate(${x}px, ${y + 60}px)`; camadaFunc.append(no); funcionarios.set(v.id, no); void no.getBoundingClientRect(); }
-      no.style.transform = `translate(${x}px, ${y}px)`;
-      const pausado = v.status === "pausado";
-      no.classList.toggle("parado", pausado);
-      no.setAttribute("aria-label", `${v.canal}: ${pausado ? "pausado" : ESTACOES[etapa].verbo}`);
-    });
-  }
-
-  const g = (id) => { const n = $(id); n.replaceChildren(); return n; };
-  agenda(g("g-agenda"), estado);
-  caixa(g("g-caixa"), estado.pendentes.length);
-  cofre(g("g-cofre"), estado.saldo);
-}
-
-function desenharLegenda() {
-  const l = $("legenda");
-  l.replaceChildren();
-  const ativos = estado.videos.filter((v) => (v.status === "em_producao" || v.status === "pausado") && v.etapa);
-  if (!ativos.length) {
-    const prox = estado.videos.filter((v) => v.status === "agendado").sort((a, b) => a.producao_em.localeCompare(b.producao_em))[0];
-    l.append(el("div", { class: "vazio", texto: prox ? `Ninguém na linha agora. Próximo: ${prox.tema} (${quando(prox.producao_em)}).` : "Ninguém na linha agora. 😴" }));
-    return;
-  }
-  for (const v of ativos) {
-    const pausado = v.status === "pausado";
-    const txt = pausado
-      ? `parado na etapa “${ESTACOES[v.etapa].nome.toLowerCase()}”${v.retomar_em ? ` · retoma ${hhmm(v.retomar_em)}` : ""}`
-      : `${ESTACOES[v.etapa].verbo} (${v.etapas_feitas + 1}/${v.etapas_total})`;
-    l.append(el("div", { class: "func-linha" },
-      el("div", { class: "avatar", style: `background:${corDoCanal(v.canal)}`, texto: iniciais(v.canal) }),
-      el("div", { class: "txt" }, el("strong", { texto: v.tema }), el("div", { class: "meta", texto: `${v.canal} · ${txt}` }),
-        el("div", { class: "barra" }, el("i", { style: `width:${(v.etapas_feitas / v.etapas_total) * 100}%` })))));
-  }
-}
-
 function desenharExtrato() {
   const x = $("extrato");
   x.replaceChildren();
@@ -517,23 +403,17 @@ function desenharCanais() {
   }
 }
 
-function mostrarAba(qual) {
-  const esc = qual === "escritorio";
-  $("painel-escritorio").hidden = !esc;
-  $("painel-aprovar").hidden = esc;
-  $("aba-escritorio").setAttribute("aria-selected", esc);
-  $("aba-aprovar").setAttribute("aria-selected", !esc);
-  window.scrollTo({ top: 0 });
+
+function desenhar() {
+  desenharHud(); desenharPendentes(); desenharAgenda(); desenharLegenda(); desenharLista(); desenharExtrato(); desenharCanais();
+  jogo.atualizar(estado);
 }
-$("aba-escritorio").onclick = () => mostrarAba("escritorio");
-$("aba-aprovar").onclick = () => mostrarAba("aprovar");
-montarCena();
 
 async function atualizar() {
   try { estado = await api("/api/estado"); estado.hoje = estado.agora.slice(0, 10); desenhar(); } catch (e) { if (e.message !== "401") console.error(e); }
 }
 atualizar();
-setInterval(atualizar, 10000);
+setInterval(atualizar, 8000);
 </script>
 </body>
 </html>
