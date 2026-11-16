@@ -5,7 +5,7 @@
   "installCommand": null,
   "outputDirectory": "public",
   "rewrites": [
-    { "source": "/(.*)", "destination": "https://fabrica-production-7271721f.up.railway.app/$1" }
+    { "source": "/(.*)", "destination": "https://fabricapro.up.railway.app/$1" }
   ],
   "headers": [
     {

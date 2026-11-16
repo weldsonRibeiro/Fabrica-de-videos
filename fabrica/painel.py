@@ -25,6 +25,14 @@ from .modelos import ETAPAS, Canal, Status, Video
 
 PAGINA = Path(__file__).parent / "web" / "index.html"
 COOKIE = "fabrica_chave"
+PAGINA_SEM_CHAVE = """<!doctype html><html lang="pt-BR"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark">
+<title>Fábrica de Vídeos</title>
+<body style="font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:12vh auto;padding:0 1.2rem">
+<h1 style="font-size:1.3rem">🏭 Fábrica de Vídeos</h1>
+<p>Acesso restrito. Abra o link <strong>completo</strong>, com a sua chave no final:</p>
+<p><code>https://ESTE-ENDERECO/?k=SUA_CHAVE</code></p>
+<p>Só na primeira vez em cada aparelho — depois o navegador lembra.</p></body></html>"""
 TAMANHO_BLOCO = 1024 * 1024
 
 
@@ -151,6 +159,8 @@ def _fazer_handler(painel: Painel) -> type[BaseHTTPRequestHandler]:
                 cookie = f"{COOKIE}={painel.chave}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000{seguro}"
                 return self._responder(303, b"", "text/plain", {"Location": "/", "Set-Cookie": cookie})
             if not self._autorizado():
+                if url.path == "/":  # quem abriu o endereço puro no celular precisa de uma explicação, não de um JSON
+                    return self._responder(401, PAGINA_SEM_CHAVE.encode(), "text/html; charset=utf-8")
                 return self._json(401, {"erro": "não autorizado — abra o link com ?k=SUA_CHAVE"})
 
             if url.path == "/":
