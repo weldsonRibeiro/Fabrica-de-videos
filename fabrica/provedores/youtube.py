@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Callable, Mapping
 from zoneinfo import ZoneInfo
 
-from ..modelos import Video
+from ..modelos import Perfil, Video
 from .base import LimiteAtingido
 
 URL_TOKEN = "https://oauth2.googleapis.com/token"
@@ -113,12 +113,13 @@ class PublicadorYouTube:
         token = self._token(video.canal_id)
         progresso = _Progresso(self.saida / video.id / "publicacao.json")
         titulo = video.escolha["titulo"]
+        perfil = Perfil.de_dict(video.perfil)
         quando = self._quando(video.escolha["publicar_em"])
 
         if "video_id" not in progresso.dados:
             progresso.dados["video_id"] = self._subir(
                 token, progresso, "video", Path(video.pacote["video"]),
-                titulo, video.pacote.get("descricao", ""), quando,
+                titulo, video.pacote.get("descricao", ""), quando, perfil,
             )
             progresso.salvar()
         video_id = progresso.dados["video_id"]
@@ -137,7 +138,7 @@ class PublicadorYouTube:
             feitos.append(self._subir(
                 token, progresso, f"short-{j + 1}", Path(caminho),
                 f"{nome[:90]} #Shorts", f"{titulo}\nVídeo completo: https://youtu.be/{video_id}",
-                quando + self.cfg.intervalo_shorts * (j + 1),
+                quando + self.cfg.intervalo_shorts * (j + 1), perfil,
             ))
             progresso.salvar()
         return video_id
@@ -178,7 +179,8 @@ class PublicadorYouTube:
         return ErroYouTube(f"{contexto}: HTTP {status} {motivos or dados[:200]!r}")
 
     def _subir(self, token: str, progresso: "_Progresso", chave: str, arquivo: Path,
-               titulo: str, descricao: str, quando: datetime) -> str:
+               titulo: str, descricao: str, quando: datetime, perfil: Perfil | None = None) -> str:
+        perfil = perfil or Perfil()
         tamanho = arquivo.stat().st_size
         auth = {"Authorization": f"Bearer {token}"}
         sessao = progresso.dados.setdefault("sessoes", {}).get(chave)
@@ -196,8 +198,9 @@ class PublicadorYouTube:
         if not sessao:
             metadados = {
                 "snippet": {"title": titulo[:100], "description": descricao[:5000],
-                            "categoryId": self.cfg.categoria, "defaultLanguage": self.cfg.idioma,
-                            "defaultAudioLanguage": self.cfg.idioma},
+                            "categoryId": perfil.categoria_youtube or self.cfg.categoria,
+                            "defaultLanguage": perfil.idioma or self.cfg.idioma,
+                            "defaultAudioLanguage": perfil.idioma or self.cfg.idioma},
                 "status": {"privacyStatus": "private",  # agendado: fica privado até o publishAt
                            "publishAt": quando.strftime("%Y-%m-%dT%H:%M:%SZ"),
                            "selfDeclaredMadeForKids": False,

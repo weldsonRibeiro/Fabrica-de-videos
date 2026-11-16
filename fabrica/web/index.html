@@ -108,6 +108,13 @@
   .func-linha .txt strong, .func-linha .txt div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .barra { height: 5px; border-radius: 3px; background: var(--linha); margin-top: 5px; overflow: hidden; }
   .barra i { display: block; height: 100%; background: var(--marca); border-radius: 3px; transition: width .6s; }
+  .canais { display: grid; gap: 12px; }
+  .canal { background: var(--card); border: 1px solid var(--linha); border-radius: var(--raio); padding: 14px; border-left: 5px solid var(--cor, var(--marca)); }
+  .canal h3 { margin: 0; font-size: 1.05rem; }
+  .canal .sub { color: var(--suave); font-size: .85rem; margin: 2px 0 10px; }
+  .canal dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; font-size: .9rem; }
+  .canal dt { color: var(--suave); } .canal dd { margin: 0; overflow-wrap: anywhere; }
+  .canal .vazio-perfil { color: var(--suave); font-size: .88rem; }
   .extrato .linha .v { font-weight: 700; white-space: nowrap; } .v.pos { color: var(--ok); } .v.neg { color: var(--erro); }
 </style>
 </head>
@@ -128,6 +135,8 @@
     <div id="legenda" class="card legenda"></div>
     <h2>Caixa da empresa</h2>
     <div id="extrato" class="card extrato"></div>
+    <h2>Canais e perfis</h2>
+    <div id="canais" class="canais"></div>
     <h2>Na fábrica</h2>
     <div id="fabrica" class="card"></div>
   </section>
@@ -229,7 +238,7 @@ function desenhar() {
 
   const c = $("contador");
   c.textContent = estado.pendentes.length; c.hidden = !estado.pendentes.length;
-  desenharCena(); desenharLegenda(); desenharExtrato();
+  desenharCena(); desenharLegenda(); desenharExtrato(); desenharCanais();
   $("titulo-pendentes").textContent = `Para aprovar (${estado.pendentes.length})`;
   const area = $("pendentes");
   const ids = new Set(estado.pendentes.map((v) => v.id));
@@ -488,6 +497,23 @@ function desenharExtrato() {
     x.append(el("div", { class: "linha" },
       el("div", {}, el("strong", { texto: h.tipo === "despesa" ? "Produção" : "Views" }), el("div", { class: "meta", texto: tema(h.video) })),
       el("span", { class: "v " + (h.valor < 0 ? "neg" : "pos"), texto: (h.valor > 0 ? "+" : "−") + moeda(Math.abs(h.valor)) })));
+  }
+}
+
+const CAMPOS_PERFIL = [["voz", "Voz"], ["estilo_voz", "Jeito de falar"], ["tom", "Tom"], ["publico", "Público"],
+  ["estilo_visual", "Estilo visual"], ["cenas", "Cenas por vídeo"], ["categoria_youtube", "Categoria YouTube"], ["idioma", "Idioma"]];
+function desenharCanais() {
+  const area = $("canais");
+  area.replaceChildren();
+  if (!estado.canais.length) { area.append(el("div", { class: "vazio", texto: "Nenhum canal configurado." })); return; }
+  for (const c of estado.canais) {
+    const lista = el("dl");
+    for (const [chave, rotulo] of CAMPOS_PERFIL) if (c.perfil[chave]) lista.append(el("dt", { texto: rotulo }), el("dd", { texto: String(c.perfil[chave]) }));
+    if ((c.perfil.evitar || []).length) lista.append(el("dt", { texto: "Evita" }), el("dd", { texto: c.perfil.evitar.join(" · ") }));
+    area.append(el("section", { class: "canal", style: `--cor:${corDoCanal(c.nome)}` },
+      el("h3", { texto: c.nome }),
+      el("div", { class: "sub", texto: `${c.nicho || "sem nicho"} · começa às ${c.inicio} · ${c.temas} tema${c.temas === 1 ? "" : "s"} na fila` }),
+      lista.children.length ? lista : el("div", { class: "vazio-perfil", texto: "Sem perfil: usa as vozes e estilos padrão." })));
   }
 }
 

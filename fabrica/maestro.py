@@ -37,6 +37,7 @@ class Maestro:
                 canal_id=canal.id,
                 tema=canal.temas[dia.toordinal() % len(canal.temas)],
                 nicho=canal.nicho,
+                perfil=canal.perfil.para_dict(),
                 producao_em=datetime.combine(dia, _hora(canal.inicio_producao)),
             )
             self.armazem.salvar_video(video)

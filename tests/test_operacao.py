@@ -153,3 +153,115 @@ class TestVercelConfigurar(unittest.TestCase):
         modelo = json.loads((raiz / "vercel/vercel.template.json").read_text())
         chaves = {h["key"] for regra in modelo["headers"] for h in regra["headers"]}
         self.assertIn("X-Robots-Tag", chaves)
+
+
+class TestPerfisDeCanal(unittest.TestCase):
+    PERFIL = {"voz": "nova", "estilo_voz": "animada", "tom": "bem-humorado", "publico": "jovens", "estilo_visual": "pixel art",
+              "evitar": ["política"], "cenas": 5, "categoria_youtube": "28", "idioma": "pt-BR"}
+
+    def canal(self, perfil=None):
+        from fabrica.modelos import Canal
+        return Canal.de_dict({"id": "c", "nome": "C", "nicho": "n", "inicio_producao": "06:00", "temas": ["t"], "perfil": perfil or {}})
+
+    def test_perfil_vai_do_canal_para_o_video_e_sobrevive_ao_disco(self):
+        from fabrica.armazem import Armazem
+        from fabrica.maestro import Maestro
+        from fabrica.pipeline import Pipeline
+        from fabrica.provedores.falso import ProvedorFalso, PublicadorFalso
+        from datetime import date
+
+        with tempfile.TemporaryDirectory() as tmp:
+            a = Armazem(tmp)
+            Maestro(a, Pipeline(ProvedorFalso(), a), [self.canal(self.PERFIL)], PublicadorFalso()).montar_agenda(date(2026, 11, 16))
+            v = a.carregar_video("2026-11-16-c")
+            self.assertEqual(v.perfil, self.PERFIL)
+            self.assertEqual(self.canal().perfil.para_dict(), {})  # perfil vazio não polui o JSON
+
+    def test_campos_desconhecidos_sao_ignorados_e_tipos_normalizados(self):
+        from fabrica.modelos import Perfil
+
+        p = Perfil.de_dict({"voz": "onyx", "inventado": 1, "cenas": "8", "categoria_youtube": 27})
+        self.assertEqual((p.voz, p.cenas, p.categoria_youtube), ("onyx", 8, "27"))
+
+    def test_roteiro_usa_tom_publico_evitar_e_numero_de_cenas_do_perfil(self):
+        from fabrica.config import Config
+        from fabrica.modelos import Perfil
+        from fabrica.provedores.claude import ClienteClaude
+
+        class Capta:
+            def __init__(self):
+                self.prompts = []
+
+            def _chamar(self, prompt, **kw):
+                self.prompts.append(prompt)
+                raise RuntimeError("só capturar o prompt")
+
+        c = ClienteClaude(Config(cenas=12), cliente=object())
+        capta = Capta()
+        c._chamar = capta._chamar
+        with self.assertRaises(RuntimeError):
+            c.roteirizar("tema", "finanças", "dossiê", Perfil.de_dict(self.PERFIL))
+        prompt = capta.prompts[0]
+        self.assertIn("5 cenas", prompt)                     # o perfil manda no nº de cenas (não as 12 padrão)
+        self.assertIn("bem-humorado", prompt)
+        self.assertIn("jovens", prompt)
+        self.assertIn("Nunca use nem aborde: política", prompt)
+        self.assertIn("pixel art", prompt)
+
+    def test_voz_estilo_visual_no_provedor_real(self):
+        import base64
+        import shutil
+        import subprocess
+
+        if not shutil.which("ffmpeg"):
+            self.skipTest("sem ffmpeg")
+        from fabrica.config import Config
+        from fabrica.modelos import Video
+        from fabrica.provedores.openai_http import ClienteOpenAI
+        from fabrica.provedores.real import ProvedorReal
+
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz = Path(tmp)
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "sine=d=1", str(raiz / "v.mp3")], check=True)
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc=s=64x64", "-frames:v", "1", str(raiz / "i.png")], check=True)
+            png = base64.b64encode((raiz / "i.png").read_bytes()).decode()
+            enviados = []
+
+            def transporte(url, headers, corpo):
+                enviados.append((url.rsplit("/", 1)[-1], corpo))
+                return (raiz / "v.mp3").read_bytes() if url.endswith("speech") else json.dumps({"data": [{"b64_json": png}]}).encode()
+
+            prov = ProvedorReal(Config(openai_key="k", saida=raiz / "s"), claude=object(), openai=ClienteOpenAI("k", transporte))
+            v = Video("v1", "c", "t", datetime(2026, 11, 16, 5, 30), perfil=self.PERFIL)
+            v.artefatos["roteiro"] = {"cenas": [{"narracao": "oi", "prompt_imagem": "um castelo"}], "thumbnails": ["um herói"]}
+            prov.executar(__import__("fabrica.modelos", fromlist=["Etapa"]).Etapa.NARRACAO, v)
+            prov.executar(__import__("fabrica.modelos", fromlist=["Etapa"]).Etapa.CENAS, v)
+            voz = next(c for n, c in enviados if n == "speech")
+            self.assertEqual((voz["voice"], voz["instructions"]), ("nova", "animada"))
+            imagem = next(c for n, c in enviados if n == "generations")
+            self.assertEqual(imagem["prompt"], "pixel art. um castelo")
+
+    def test_youtube_usa_categoria_e_idioma_do_perfil(self):
+        from tests.test_youtube import TestPublicadorYouTube, YouTubeFalso  # reaproveita o YouTube simulado
+        t = TestPublicadorYouTube("test_agenda_video_thumbnail_e_shorts")
+        t.setUp()
+        try:
+            t.video.perfil = {"categoria_youtube": "28", "idioma": "en-US"}
+            t.publicador().agendar(t.video)
+            snippet = t.http.metadados["https://upload/1"]["snippet"]
+            self.assertEqual((snippet["categoryId"], snippet["defaultLanguage"]), ("28", "en-US"))
+        finally:
+            t.doCleanups()
+
+    def test_doctor_valida_perfis(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ruim = canais_validos(tmp, {"perfil": {"cenas": 99, "categoria_youtube": "educacao", "voz": "robo", "inventado": 1}})
+            r = rodar(tmp, {"FABRICA_PAINEL_CHAVE": "x" * 20}, canais=ruim)
+            erros = " ".join(t for n, t in r if n == doctor.ERRO)
+            avisos = " ".join(t for n, t in r if n == doctor.AVISO)
+            self.assertIn("perfil.cenas", erros)
+            self.assertIn("perfil.categoria_youtube", erros)
+            self.assertIn("desconhecido", erros)
+            self.assertIn("voz 'robo'", avisos)
+            bom = canais_validos(tmp, {"perfil": TestPerfisDeCanal.PERFIL})
+            self.assertNotIn(doctor.ERRO, niveis(rodar(tmp, {"FABRICA_PAINEL_CHAVE": "x" * 20}, canais=bom)))

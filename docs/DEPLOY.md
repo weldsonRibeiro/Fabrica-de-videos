@@ -38,8 +38,32 @@ Gerar a chave do painel: `python -c "import secrets; print(secrets.token_urlsafe
    Entre com a conta **dona do canal**. O comando imprime `YOUTUBE_REFRESH_TOKEN_HISTORIAS=...` — guarde no `.env` (ou nas variáveis do servidor).
 5. Os canais precisam ser **verificados** no YouTube para aceitar thumbnails personalizadas. Se o upload sair travado como privado mesmo com `publishAt`, o projeto da API pode precisar da auditoria do YouTube (veja o README).
 
-### Seus canais
+### Seus canais e perfis
 Copie `canais.example.json` para `canais.json` e edite: `id` (sem espaços), `nome`, `nicho`, `inicio_producao` (`HH:MM`, no seu fuso) e a lista de `temas` (um por dia, em rodízio).
+
+Cada canal pode ter um **`perfil`** — a identidade que o diferencia dos outros. Tudo é opcional; o que ficar vazio usa o padrão:
+
+| Campo | Para quê | Onde age |
+|---|---|---|
+| `voz` | voz da narração (`alloy`, `ash`, `ballad`, `coral`, `echo`, `fable`, `nova`, `onyx`, `sage`, `shimmer`, `verse`) | narração |
+| `estilo_voz` | como falar ("calmo e grave, como documentário") | narração |
+| `tom` | tom do texto ("didático e bem-humorado") | pesquisa e roteiro |
+| `publico` | para quem é ("jovens de 18 a 35 anos") | pesquisa e roteiro |
+| `evitar` | lista de assuntos/palavras que o canal não usa | pesquisa e roteiro |
+| `estilo_visual` | prefixo aplicado a **toda** imagem e thumbnail ("ilustração flat colorida") — garante a mesma cara em todos os vídeos | cenas e thumbnails |
+| `cenas` | nº de cenas por vídeo (1 a 30) | roteiro (e custo) |
+| `categoria_youtube` | número da categoria (`27` Educação, `28` Ciência e tecnologia, `22` Pessoas e blogs, `20` Games...) | publicação |
+| `idioma` | idioma no YouTube (padrão `pt-BR`) | publicação |
+
+Exemplo (veja `canais.example.json`):
+```json
+{ "id": "financas", "nome": "Dinheiro Sem Medo", "nicho": "educação financeira",
+  "inicio_producao": "07:00", "temas": ["Reserva de emergência"],
+  "perfil": { "voz": "nova", "tom": "didático e bem-humorado", "publico": "jovens de 18 a 35 anos",
+              "estilo_visual": "ilustração flat colorida, fundo limpo", "evitar": ["promessas de ganho garantido"],
+              "cenas": 10, "categoria_youtube": "27" } }
+```
+O `python -m fabrica doctor` valida os perfis. No servidor, o conteúdo inteiro do `canais.json` vai na variável `FABRICA_CANAIS_JSON`; o painel mostra cada canal e seu perfil na aba *Escritório*. Mudanças no perfil valem para os vídeos **ainda não produzidos** (cada vídeo guarda uma cópia do perfil do dia em que foi agendado).
 
 ---
 

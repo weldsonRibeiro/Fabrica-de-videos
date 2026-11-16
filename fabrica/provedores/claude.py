@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import Any
 
 from ..config import Config
+from ..modelos import Perfil
 from .base import LimiteAtingido
 
 # US$ por 1M de tokens (entrada, saída). Só para estimar o custo que vira despesa no jogo.
@@ -57,6 +58,18 @@ ESQUEMA_ROTEIRO: dict[str, Any] = {
     "required": ["titulos", "descricao", "cenas", "thumbnails", "shorts"],
     "additionalProperties": False,
 }
+
+
+def descrever_canal(nicho: str, perfil: Perfil) -> str:
+    """O bloco de texto que apresenta o canal ao modelo (nicho + identidade)."""
+    linhas = [f"Canal sobre: {nicho or 'assuntos gerais'}."]
+    if perfil.publico:
+        linhas.append(f"Público: {perfil.publico}.")
+    if perfil.tom:
+        linhas.append(f"Tom do canal: {perfil.tom}.")
+    if perfil.evitar:
+        linhas.append("Nunca use nem aborde: " + "; ".join(perfil.evitar) + ".")
+    return "\n".join(linhas)
 
 
 class ErroDeIA(Exception):
@@ -153,20 +166,25 @@ class ClienteClaude:
         return urls
 
     # --- etapas -----------------------------------------------------------------------------
-    def pesquisar(self, tema: str, nicho: str) -> RespostaClaude:
+    def pesquisar(self, tema: str, nicho: str, perfil: Perfil | None = None) -> RespostaClaude:
         prompt = (
-            f"Canal sobre: {nicho or 'assuntos gerais'}.\nTema do vídeo: {tema}\n\n"
+            f"{descrever_canal(nicho, perfil or Perfil())}\nTema do vídeo: {tema}\n\n"
             "Pesquise na web e entregue um dossiê em português para o roteirista: fatos verificados "
             "(com datas e números), contexto, pontos polêmicos ou debatidos, curiosidades que prendem "
             "a atenção e erros comuns sobre o tema. Termine com a lista de fontes usadas."
         )
         return self._chamar(prompt, max_tokens=8000, web=True)
 
-    def roteirizar(self, tema: str, nicho: str, dossie: str) -> tuple[dict[str, Any], float]:
-        n = self._cfg.cenas
+    def roteirizar(self, tema: str, nicho: str, dossie: str, perfil: Perfil | None = None) -> tuple[dict[str, Any], float]:
+        perfil = perfil or Perfil()
+        n = perfil.cenas or self._cfg.cenas
+        estilo = (f"- O estilo visual do canal é «{perfil.estilo_visual}» e será aplicado automaticamente a toda imagem; "
+                  "nos `prompt_imagem` e nas thumbnails descreva só o conteúdo (cena, personagens, ação), de forma compatível com esse estilo.\n"
+                  ) if perfil.estilo_visual else ""
         prompt = (
-            f"Canal sobre: {nicho or 'assuntos gerais'}.\nTema: {tema}\n\nDossiê de pesquisa:\n{dossie}\n\n"
+            f"{descrever_canal(nicho, perfil)}\nTema: {tema}\n\nDossiê de pesquisa:\n{dossie}\n\n"
             f"Escreva o vídeo em {n} cenas, em português do Brasil, tom envolvente e claro. Use só fatos do dossiê.\n"
+            f"{estilo}"
             "- cenas: cada uma com `narracao` (70 a 110 palavras, texto corrido para ser falado, sem "
             "marcações) e `prompt_imagem` (descrição visual em inglês, estilo ilustração cinematográfica "
             "consistente entre as cenas, sem texto escrito na imagem).\n"

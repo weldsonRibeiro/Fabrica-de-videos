@@ -86,7 +86,9 @@ class Painel:
         for o in outros:  # a lista "na fábrica" não precisa carregar as mídias
             for k in ("titulos", "descricao", "video", "thumbnails", "shorts"):
                 o.pop(k, None)
-        return {"saldo": saldo, "fuso": self.fuso, "agora": agora_local().isoformat(timespec="seconds"), "pendentes": pendentes, "videos": outros,
+        canais = [{"id": c.id, "nome": c.nome, "nicho": c.nicho, "inicio": c.inicio_producao,
+                   "temas": len(c.temas), "perfil": c.perfil.para_dict()} for c in self.canais.values()]
+        return {"canais": canais, "saldo": saldo, "fuso": self.fuso, "agora": agora_local().isoformat(timespec="seconds"), "pendentes": pendentes, "videos": outros,
                 "historico": list(reversed(carteira.historico[-8:]))}
 
     def aprovar(self, dados: dict) -> None:

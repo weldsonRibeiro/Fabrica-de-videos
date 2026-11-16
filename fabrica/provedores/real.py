@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import Config
-from ..modelos import Etapa, Video
+from ..modelos import Etapa, Perfil, Video
 from . import montagem
 from .base import Resultado
 from .claude import ClienteClaude
@@ -34,33 +34,38 @@ class ProvedorReal:
 
     # --- etapas ---------------------------------------------------------------------------------
     def _pesquisa(self, v: Video, pasta: Path, custo: CustoPendente) -> dict[str, Any]:
-        r = self.claude.pesquisar(v.tema, v.nicho)
+        r = self.claude.pesquisar(v.tema, v.nicho, Perfil.de_dict(v.perfil))
         custo.somar(r.custo)
         return {"dossie": r.texto, "fontes": r.fontes}
 
     def _roteiro(self, v: Video, pasta: Path, custo: CustoPendente) -> dict[str, Any]:
-        roteiro, c = self.claude.roteirizar(v.tema, v.nicho, v.artefatos["pesquisa"]["dossie"])
+        roteiro, c = self.claude.roteirizar(v.tema, v.nicho, v.artefatos["pesquisa"]["dossie"], Perfil.de_dict(v.perfil))
         custo.somar(c)
         return roteiro
 
     def _narracao(self, v: Video, pasta: Path, custo: CustoPendente) -> dict[str, Any]:
+        perfil = Perfil.de_dict(v.perfil)
+        voz = perfil.voz or self.cfg.voz
+        estilo = perfil.estilo_voz or "Narrador de documentário em português do Brasil: claro, caloroso e ritmado."
         audios = []
         for i, cena in enumerate(v.artefatos["roteiro"]["cenas"], 1):
             arquivo = pasta / f"narracao-{i:02d}.mp3"
             if not arquivo.exists():  # já gerada antes do limite: não paga de novo
                 dados = self.openai.post("/audio/speech", {
-                    "model": self.cfg.modelo_voz, "voice": self.cfg.voz,
+                    "model": self.cfg.modelo_voz, "voice": voz,
                     "input": cena["narracao"], "response_format": "mp3",
-                    "instructions": "Narrador de documentário em português do Brasil: claro, caloroso e ritmado.",
+                    "instructions": estilo,
                 })
                 arquivo.write_bytes(dados)
                 custo.somar(montagem.duracao(arquivo) / 60 * self.cfg.custo_voz_por_min * self.cfg.cotacao)
             audios.append({"arquivo": str(arquivo), "duracao": montagem.duracao(arquivo)})
         return {"audios": audios}
 
-    def _gerar_imagem(self, prompt: str, destino: Path, custo: CustoPendente) -> None:
+    def _gerar_imagem(self, prompt: str, destino: Path, custo: CustoPendente, estilo: str = "") -> None:
         if destino.exists():
             return
+        if estilo:  # identidade visual do canal: garantida aqui, não depende do modelo de texto
+            prompt = f"{estilo}. {prompt}"
         dados = self.openai.post("/images/generations", {
             "model": self.cfg.modelo_imagem, "prompt": prompt, "size": TAMANHO_IMAGEM,
             "quality": self.cfg.qualidade_imagem, "n": 1,
@@ -70,9 +75,10 @@ class ProvedorReal:
 
     def _cenas(self, v: Video, pasta: Path, custo: CustoPendente) -> dict[str, Any]:
         imagens = []
+        estilo = Perfil.de_dict(v.perfil).estilo_visual
         for i, cena in enumerate(v.artefatos["roteiro"]["cenas"], 1):
             destino = pasta / f"cena-{i:02d}.png"
-            self._gerar_imagem(cena["prompt_imagem"], destino, custo)
+            self._gerar_imagem(cena["prompt_imagem"], destino, custo, estilo)
             imagens.append(str(destino))
         return {"cenas": imagens}
 
@@ -101,9 +107,10 @@ class ProvedorReal:
 
     def _thumbnail(self, v: Video, pasta: Path, custo: CustoPendente) -> dict[str, Any]:
         thumbs = []
+        estilo = Perfil.de_dict(v.perfil).estilo_visual
         for i, prompt in enumerate(v.artefatos["roteiro"]["thumbnails"], 1):
             bruta, final = pasta / f"thumb-{i}.png", pasta / f"thumb-{i}.jpg"
-            self._gerar_imagem(prompt, bruta, custo)
+            self._gerar_imagem(prompt, bruta, custo, estilo)
             montagem.thumbnail_16x9(bruta, final)
             thumbs.append(str(final))
         return {"thumbnails": thumbs}
