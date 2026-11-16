@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import Any
 
 from ..config import Config
+from ..fuso import agora_local
 from ..modelos import Perfil
 from .base import LimiteAtingido
 
@@ -61,8 +62,10 @@ ESQUEMA_ROTEIRO: dict[str, Any] = {
 
 
 def descrever_canal(nicho: str, perfil: Perfil) -> str:
-    """O bloco de texto que apresenta o canal ao modelo (nicho + identidade)."""
-    linhas = [f"Canal sobre: {nicho or 'assuntos gerais'}."]
+    """O bloco de texto que apresenta o canal ao modelo (nicho + identidade + a data de hoje)."""
+    linhas = [f"Data de hoje: {agora_local():%d/%m/%Y}. Antes de afirmar qualquer coisa sobre fatos recentes, "
+              "confirme o estado atual do assunto nas fontes (algo pode já ter acontecido, mudado ou sido adiado).",
+              f"Canal sobre: {nicho or 'assuntos gerais'}."]
     if perfil.publico:
         linhas.append(f"Público: {perfil.publico}.")
     if perfil.tom:
@@ -83,7 +86,7 @@ class RespostaClaude:
     fontes: list[str]
 
 
-def validar_roteiro(r: dict[str, Any]) -> dict[str, Any]:
+def validar_roteiro(r: dict[str, Any], max_shorts: int | None = None) -> dict[str, Any]:
     """Confere o que o modelo devolveu; descarta shorts com índices inválidos."""
     cenas = r.get("cenas") or []
     if not cenas:
@@ -94,6 +97,8 @@ def validar_roteiro(r: dict[str, Any]) -> dict[str, Any]:
     r["shorts"] = [
         s for s in r.get("shorts", []) if 0 <= s["cena_inicio"] <= s["cena_fim"] < n
     ]
+    if max_shorts is not None:
+        r["shorts"] = r["shorts"][:max_shorts]
     return r
 
 
@@ -171,13 +176,16 @@ class ClienteClaude:
             f"{descrever_canal(nicho, perfil or Perfil())}\nTema do vídeo: {tema}\n\n"
             "Pesquise na web e entregue um dossiê em português para o roteirista: fatos verificados "
             "(com datas e números), contexto, pontos polêmicos ou debatidos, curiosidades que prendem "
-            "a atenção e erros comuns sobre o tema. Termine com a lista de fontes usadas."
+            "a atenção e erros comuns sobre o tema. Dê preferência a fontes oficiais e recentes e separe com clareza "
+            "o que é CONFIRMADO oficialmente do que é rumor, vazamento ou especulação (marque cada item). "
+            "Termine com a lista de fontes usadas."
         )
         return self._chamar(prompt, max_tokens=8000, web=True)
 
     def roteirizar(self, tema: str, nicho: str, dossie: str, perfil: Perfil | None = None) -> tuple[dict[str, Any], float]:
         perfil = perfil or Perfil()
         n = perfil.cenas or self._cfg.cenas
+        n_shorts = 3 if perfil.shorts is None else perfil.shorts
         estilo = (f"- O estilo visual do canal é «{perfil.estilo_visual}» e será aplicado automaticamente a toda imagem; "
                   "nos `prompt_imagem` e nas thumbnails descreva só o conteúdo (cena, personagens, ação), de forma compatível com esse estilo.\n"
                   ) if perfil.estilo_visual else ""
@@ -192,12 +200,14 @@ class ClienteClaude:
             "- descricao: descrição do vídeo para o YouTube.\n"
             "- thumbnails: 3 prompts de imagem em inglês, composição forte, um assunto central, "
             "espaço livre para texto; sem texto escrito na imagem.\n"
-            "- shorts: 3 trechos independentes e autoexplicativos, cada um com `titulo` e o intervalo "
-            f"de cenas (`cena_inicio` e `cena_fim`, índices a partir de 0, até {n - 1}, inclusive; no "
-            "máximo 2 cenas por short)."
+            + ("- shorts: devolva uma lista vazia (este canal não publica shorts).\n" if n_shorts == 0 else
+               f"- shorts: {n_shorts} trecho(s) independente(s) e autoexplicativo(s), cada um com `titulo` e o intervalo "
+               f"de cenas (`cena_inicio` e `cena_fim`, índices a partir de 0, até {n - 1}, inclusive; no "
+               "máximo 2 cenas por short).\n")
+            + "- Só trate como fato o que o dossiê marca como confirmado; rumores e teorias devem ser ditos como rumores e teorias."
         )
         resp = self._chamar(prompt, max_tokens=32000, esquema=ESQUEMA_ROTEIRO)
         try:
-            return validar_roteiro(json.loads(resp.texto)), resp.custo
+            return validar_roteiro(json.loads(resp.texto), n_shorts), resp.custo
         except json.JSONDecodeError as e:
             raise ErroDeIA(f"roteiro não veio em JSON válido: {e}") from e

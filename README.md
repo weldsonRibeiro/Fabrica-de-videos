@@ -147,7 +147,7 @@ A tela inicial do painel é o **escritório em pixel art, visto de cima**, tela 
 
 Os canais ficam em [`canais.example.json`](canais.example.json) (nome, nicho, horário de início,
 lista de temas e um **perfil** opcional: voz, tom, público, estilo visual, o que evitar, nº de cenas e
-categoria do YouTube — veja `docs/DEPLOY.md`).
+categoria do YouTube — veja `docs/DEPLOY.md`). `canais.gta6.json` é um exemplo pronto com 6 canais sobre o lançamento de GTA 6.
 
 ## Como a "retomada sozinha" funciona
 

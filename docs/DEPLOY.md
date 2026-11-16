@@ -63,6 +63,10 @@ Exemplo (veja `canais.example.json`):
               "estilo_visual": "ilustração flat colorida, fundo limpo", "evitar": ["promessas de ganho garantido"],
               "cenas": 10, "categoria_youtube": "27" } }
 ```
+**Shorts e a cota do YouTube.** `shorts` define quantos shorts sobem com cada vídeo (padrão 3; `0` = nenhum). A cota padrão da API (10.000 unidades/dia) comporta só ~6 uploads por dia, e cada short conta como um upload: com muitos canais, `shorts: 0` é o que cabe. O `doctor` avisa quando o total ultrapassa a cota; para ligar os shorts, peça aumento de cota ao Google.
+
+**Exemplo pronto:** `canais.gta6.json` traz 6 canais com foco no lançamento de GTA 6, cada um com um ângulo diferente (notícias do dia, guias, lore, tecnologia, retrospectiva da série e checagem de boatos), horários, vozes e estilos visuais próprios e 14 temas. Para usar: copie o conteúdo para o `canais.json` (ou para `FABRICA_CANAIS_JSON` no servidor).
+
 O `python -m fabrica doctor` valida os perfis. No servidor, o conteúdo inteiro do `canais.json` vai na variável `FABRICA_CANAIS_JSON`; o painel mostra cada canal e seu perfil na aba *Escritório*. Mudanças no perfil valem para os vídeos **ainda não produzidos** (cada vídeo guarda uma cópia do perfil do dia em que foi agendado).
 
 ---

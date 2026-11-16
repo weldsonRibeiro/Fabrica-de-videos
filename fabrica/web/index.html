@@ -387,14 +387,14 @@ function desenharExtrato() {
 }
 
 const CAMPOS_PERFIL = [["voz", "Voz"], ["estilo_voz", "Jeito de falar"], ["tom", "Tom"], ["publico", "Público"],
-  ["estilo_visual", "Estilo visual"], ["cenas", "Cenas por vídeo"], ["categoria_youtube", "Categoria YouTube"], ["idioma", "Idioma"]];
+  ["estilo_visual", "Estilo visual"], ["cenas", "Cenas por vídeo"], ["categoria_youtube", "Categoria YouTube"], ["idioma", "Idioma"], ["shorts", "Shorts por vídeo"]];
 function desenharCanais() {
   const area = $("canais");
   area.replaceChildren();
   if (!estado.canais.length) { area.append(el("div", { class: "vazio", texto: "Nenhum canal configurado." })); return; }
   for (const c of estado.canais) {
     const lista = el("dl");
-    for (const [chave, rotulo] of CAMPOS_PERFIL) if (c.perfil[chave]) lista.append(el("dt", { texto: rotulo }), el("dd", { texto: String(c.perfil[chave]) }));
+    for (const [chave, rotulo] of CAMPOS_PERFIL) if (c.perfil[chave] !== undefined && c.perfil[chave] !== "") lista.append(el("dt", { texto: rotulo }), el("dd", { texto: String(c.perfil[chave]) }));
     if ((c.perfil.evitar || []).length) lista.append(el("dt", { texto: "Evita" }), el("dd", { texto: c.perfil.evitar.join(" · ") }));
     area.append(el("section", { class: "canal", style: `--cor:${corDoCanal(c.nome)}` },
       el("h3", { texto: c.nome }),

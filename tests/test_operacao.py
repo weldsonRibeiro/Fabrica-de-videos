@@ -265,3 +265,102 @@ class TestPerfisDeCanal(unittest.TestCase):
             self.assertIn("voz 'robo'", avisos)
             bom = canais_validos(tmp, {"perfil": TestPerfisDeCanal.PERFIL})
             self.assertNotIn(doctor.ERRO, niveis(rodar(tmp, {"FABRICA_PAINEL_CHAVE": "x" * 20}, canais=bom)))
+
+
+class TestCanaisGta6(unittest.TestCase):
+    RAIZ = Path(__file__).resolve().parent.parent
+
+    def carregar(self):
+        return json.loads((self.RAIZ / "canais.gta6.json").read_text(encoding="utf-8"))
+
+    def test_seis_canais_distintos_e_validos(self):
+        canais = self.carregar()
+        self.assertEqual(len(canais), 6)
+        self.assertEqual(len({c["id"] for c in canais}), 6)
+        self.assertEqual(len({c["inicio_producao"] for c in canais}), 6)             # horários diferentes
+        self.assertEqual(len({c["perfil"]["voz"] for c in canais}), 6)               # vozes diferentes
+        self.assertEqual(len({c["perfil"]["estilo_visual"] for c in canais}), 6)     # identidades visuais diferentes
+        todos = [t for c in canais for t in c["temas"]]
+        self.assertEqual(len(todos), len(set(todos)), "tema repetido entre canais")
+        for c in canais:
+            self.assertGreaterEqual(len(c["temas"]), 14)                              # 2 semanas sem repetir
+            self.assertTrue(any("boato" in e or "fato" in e for e in c["perfil"]["evitar"]))
+            self.assertEqual(c["perfil"]["categoria_youtube"], "20")
+        with tempfile.TemporaryDirectory() as tmp:
+            r = rodar(tmp, {"FABRICA_PAINEL_CHAVE": "x" * 20}, canais=str(self.RAIZ / "canais.gta6.json"))
+            self.assertNotIn(doctor.ERRO, niveis(r))
+
+    def test_cota_do_youtube_cabe_com_zero_shorts_e_avisa_quando_nao_cabe(self):
+        canais = self.carregar()
+        env = {"FABRICA_PAINEL_CHAVE": "x" * 20, "YOUTUBE_CLIENT_ID": "i", "YOUTUBE_CLIENT_SECRET": "s",
+               **{"YOUTUBE_REFRESH_TOKEN_" + c["id"].upper().replace("-", "_"): "t" for c in canais}}
+        with tempfile.TemporaryDirectory() as tmp:
+            arq = Path(tmp) / "c.json"
+            arq.write_text(json.dumps(canais))
+            avisos = " ".join(t for n, t in rodar(tmp, env, publicador="youtube", canais=str(arq)) if n == doctor.AVISO)
+            self.assertNotIn("Cota do YouTube", avisos)                               # 6 uploads/dia cabem nas 10.000 unidades
+            for c in canais:
+                c["perfil"]["shorts"] = 3
+            arq.write_text(json.dumps(canais))
+            avisos = " ".join(t for n, t in rodar(tmp, env, publicador="youtube", canais=str(arq)) if n == doctor.AVISO)
+            self.assertIn("Cota do YouTube: 24 uploads/dia", avisos)
+
+    def test_zero_shorts_sobrevive_ao_json_e_none_continua_none(self):
+        from fabrica.modelos import Perfil
+
+        self.assertEqual(Perfil.de_dict({"shorts": 0}).para_dict(), {"shorts": 0})
+        self.assertEqual(Perfil.de_dict({}).para_dict(), {})
+        self.assertIsNone(Perfil.de_dict({}).shorts)
+
+    def test_prompt_leva_a_data_de_hoje_fontes_oficiais_e_zero_shorts(self):
+        from fabrica.config import Config
+        from fabrica.fuso import agora_local
+        from fabrica.modelos import Perfil
+        from fabrica.provedores.claude import ClienteClaude
+
+        prompts = []
+
+        def capta(prompt, **kw):
+            prompts.append(prompt)
+            raise RuntimeError("só capturar")
+
+        c = ClienteClaude(Config(), cliente=object())
+        c._chamar = capta
+        for chamada in (lambda: c.pesquisar("t", "n", Perfil()), lambda: c.roteirizar("t", "n", "d", Perfil.de_dict({"shorts": 0}))):
+            with self.assertRaises(RuntimeError):
+                chamada()
+        hoje = f"{agora_local():%d/%m/%Y}"
+        self.assertIn(f"Data de hoje: {hoje}", prompts[0])
+        self.assertIn("CONFIRMADO oficialmente", prompts[0])
+        self.assertIn("lista vazia (este canal não publica shorts)", prompts[1])
+        self.assertIn("rumores e teorias devem ser ditos como rumores", prompts[1])
+
+    def test_roteiro_corta_shorts_alem_do_limite_do_perfil(self):
+        from fabrica.provedores.claude import validar_roteiro
+
+        r = {"titulos": ["a"], "thumbnails": ["b"], "cenas": [{"narracao": "x", "prompt_imagem": "y"}] * 4,
+             "shorts": [{"titulo": f"s{i}", "cena_inicio": 0, "cena_fim": 1} for i in range(3)]}
+        self.assertEqual(len(validar_roteiro(dict(r), 1)["shorts"]), 1)
+        self.assertEqual(validar_roteiro(dict(r), 0)["shorts"], [])
+        self.assertEqual(len(validar_roteiro(dict(r))["shorts"]), 3)
+
+    def test_maestro_e_painel_ignoram_videos_de_canal_removido(self):
+        from datetime import date
+
+        from fabrica.armazem import Armazem
+        from fabrica.maestro import Maestro
+        from fabrica.modelos import Canal, Status, Video
+        from fabrica.painel import Painel
+        from fabrica.pipeline import Pipeline
+        from fabrica.provedores.falso import ProvedorFalso, PublicadorFalso
+
+        with tempfile.TemporaryDirectory() as tmp:
+            a = Armazem(Path(tmp) / "d")
+            antigo = Video("2026-11-16-velho", "velho", "tema antigo", datetime(2026, 11, 16, 5, 30))
+            a.salvar_video(antigo)
+            novo = Canal.de_dict({"id": "novo", "nome": "Novo", "inicio_producao": "05:30", "temas": ["t"]})
+            Maestro(a, Pipeline(ProvedorFalso(), a), [novo], PublicadorFalso()).tick(datetime(2026, 11, 16, 6, 0))
+            self.assertEqual(a.carregar_video("2026-11-16-velho").status, Status.AGENDADO)       # não foi produzido (nem pago)
+            self.assertEqual(a.carregar_video("2026-11-16-novo").status, Status.AGUARDANDO_APROVACAO)
+            ids = [v["id"] for v in Painel(a, [novo], "x" * 20, Path(tmp)).estado()["videos"]]
+            self.assertEqual(ids, ["2026-11-16-novo"])

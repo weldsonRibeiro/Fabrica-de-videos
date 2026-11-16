@@ -1,0 +1,239 @@
+[
+  {
+    "id": "gta6-hoje",
+    "nome": "GTA 6 Hoje",
+    "nicho": "notícias diárias sobre o lançamento de GTA 6",
+    "inicio_producao": "05:30",
+    "temas": [
+      "Resumo do dia: tudo o que mudou em GTA 6 nas últimas 24 horas",
+      "O que a Rockstar e a Take-Two confirmaram oficialmente sobre GTA 6 até agora",
+      "Contagem regressiva: o que ainda falta saber sobre o lançamento de GTA 6",
+      "GTA 6: o que é oficial e o que é só boato esta semana",
+      "Como o mundo dos games está reagindo a GTA 6",
+      "Servidores, pré-carregamento e primeiro dia: o que esperar do lançamento de GTA 6",
+      "Reviews e primeiras impressões de GTA 6: o que a imprensa está dizendo",
+      "Vendas e recordes de GTA 6: os números que importam",
+      "Atualizações e correções de GTA 6: o que a Rockstar anunciou",
+      "O que mudou no mercado de games por causa de GTA 6",
+      "Os próximos passos da Rockstar depois do lançamento de GTA 6",
+      "Perguntas mais feitas sobre GTA 6, respondidas com fontes",
+      "O que os jogadores estão descobrindo em GTA 6",
+      "Resumo da semana de GTA 6"
+    ],
+    "perfil": {
+      "voz": "ash",
+      "estilo_voz": "Voz firme e ágil de apresentador de telejornal de games, sem exagero.",
+      "tom": "direto, confiável e ágil, como um boletim; adapte o enfoque ao momento (pré-lançamento ou pós-lançamento) conforme a data de hoje",
+      "publico": "fãs de games brasileiros de 16 a 40 anos",
+      "estilo_visual": "arte digital estilo capa de revista, rosa e azul neon, atmosfera de Miami nos anos 80, sem logos, sem texto escrito e sem rostos de personagens oficiais (só silhuetas ou figuras estilizadas)",
+      "evitar": [
+        "afirmar boato, vazamento ou teoria como se fosse fato",
+        "prometer data, preço, recurso ou plataforma que não seja oficial",
+        "links, instruções ou incentivo à pirataria ou a acesso antecipado ilegal",
+        "usar trechos, imagens ou logos oficiais da Rockstar ou da Take-Two",
+        "ataques a pessoas, a outras comunidades ou a outras plataformas"
+      ],
+      "cenas": 10,
+      "categoria_youtube": "20",
+      "shorts": 0
+    }
+  },
+  {
+    "id": "gta6-guia",
+    "nome": "Guia GTA 6",
+    "nicho": "guias e dicas para jogar GTA 6",
+    "inicio_producao": "07:00",
+    "temas": [
+      "Antes de jogar: o que preparar para o lançamento de GTA 6 (espaço, conta, pré-carregamento)",
+      "Qual edição de GTA 6 comprar: o que cada uma inclui e o preço oficial",
+      "Onde jogar GTA 6: consoles e plataformas confirmados",
+      "Primeiras horas em GTA 6: o que fazer ao começar o jogo",
+      "Controles e configurações recomendadas para jogar GTA 6",
+      "Como começar bem a história de GTA 6 sem levar spoilers",
+      "Dicas para ganhar dinheiro cedo em GTA 6",
+      "Como explorar o mapa de GTA 6 sem se perder",
+      "Erros de iniciante em GTA 6 e como evitá-los",
+      "GTA 6 com a família: classificação indicativa e controle parental",
+      "Como comprar GTA 6 sem cair em golpe",
+      "Problemas comuns no lançamento de GTA 6 e como resolver",
+      "Checklist do jogador: tudo para ficar pronto para GTA 6",
+      "Guia rápido de GTA 6 para quem nunca jogou GTA"
+    ],
+    "perfil": {
+      "voz": "nova",
+      "estilo_voz": "Voz amigável e clara, ritmo calmo de tutorial, passo a passo.",
+      "tom": "didático, paciente e prático, sem jargão",
+      "publico": "jogadores brasileiros, de iniciantes a veteranos",
+      "estilo_visual": "infográfico limpo em estilo flat, cores de pôr do sol (laranja, rosa e roxo), ícones simples, sem logos, sem texto escrito e sem rostos de personagens oficiais (só silhuetas ou figuras estilizadas)",
+      "evitar": [
+        "afirmar mecânicas, missões ou segredos do jogo que não sejam confirmados",
+        "afirmar boato, vazamento ou teoria como se fosse fato",
+        "prometer data, preço, recurso ou plataforma que não seja oficial",
+        "links, instruções ou incentivo à pirataria ou a acesso antecipado ilegal",
+        "usar trechos, imagens ou logos oficiais da Rockstar ou da Take-Two",
+        "ataques a pessoas, a outras comunidades ou a outras plataformas"
+      ],
+      "cenas": 12,
+      "categoria_youtube": "20",
+      "shorts": 0
+    }
+  },
+  {
+    "id": "gta6-lore",
+    "nome": "Leonida Lore",
+    "nicho": "mundo, personagens e história de GTA 6",
+    "inicio_producao": "09:00",
+    "temas": [
+      "Quem são Jason e Lucia: o que se sabe sobre os protagonistas de GTA 6",
+      "Leonida e Vice City: a geografia do mapa de GTA 6 explicada",
+      "Os detalhes escondidos nos trailers de GTA 6",
+      "A Flórida real que inspira Leonida",
+      "Os personagens secundários de GTA 6: quem aparece e o que se sabe",
+      "O clima de Vice City: crime e cultura em GTA 6",
+      "Teorias de fãs sobre a história de GTA 6 (sempre marcadas como teoria)",
+      "A trilha sonora e as rádios de GTA 6: o que se sabe",
+      "Os veículos e a cultura de carros de GTA 6",
+      "A sátira social de GTA 6: o que a Rockstar costuma criticar",
+      "Easter eggs de GTA 6 encontrados pela comunidade",
+      "Como GTA 6 se conecta com a história da série",
+      "A natureza e o clima de Leonida",
+      "Tudo o que a Rockstar contou sobre a criação de GTA 6"
+    ],
+    "perfil": {
+      "voz": "onyx",
+      "estilo_voz": "Voz grave e cinematográfica, pausas dramáticas, como narrador de documentário.",
+      "tom": "cinematográfico, envolvente e curioso; separa sempre fato confirmado de teoria",
+      "publico": "fãs que gostam de lore, personagens e teorias",
+      "estilo_visual": "pintura cinematográfica noir tropical, luz de fim de tarde, palmeiras e neon, sem logos, sem texto escrito e sem rostos de personagens oficiais (só silhuetas ou figuras estilizadas)",
+      "evitar": [
+        "spoilers de enredo sem aviso prévio",
+        "afirmar boato, vazamento ou teoria como se fosse fato",
+        "prometer data, preço, recurso ou plataforma que não seja oficial",
+        "links, instruções ou incentivo à pirataria ou a acesso antecipado ilegal",
+        "usar trechos, imagens ou logos oficiais da Rockstar ou da Take-Two",
+        "ataques a pessoas, a outras comunidades ou a outras plataformas"
+      ],
+      "cenas": 12,
+      "categoria_youtube": "20",
+      "shorts": 0
+    }
+  },
+  {
+    "id": "gta6-tech",
+    "nome": "GTA 6 Tech",
+    "nicho": "tecnologia, consoles e desempenho para GTA 6",
+    "inicio_producao": "12:00",
+    "temas": [
+      "GTA 6 no PS5 e no Xbox Series: o que se sabe sobre desempenho",
+      "Gráficos de GTA 6: o que os trailers mostram de tecnologia",
+      "O hardware ideal para jogar GTA 6",
+      "GTA 6 e a versão de PC: o que é oficial",
+      "Tamanho de instalação e armazenamento de GTA 6",
+      "Modo desempenho ou modo qualidade em GTA 6",
+      "Como GTA 6 pode mudar a geração de consoles",
+      "Qual TV ou monitor usar com GTA 6",
+      "Internet e modo online: o que esperar de GTA 6",
+      "Física e inteligência artificial em GTA 6: o que a Rockstar mostrou",
+      "Acessórios e controles para GTA 6",
+      "GTA 6 em portáteis e na nuvem: o que é oficial",
+      "Preço dos consoles na época de GTA 6",
+      "Segurança: como proteger sua conta antes de GTA 6"
+    ],
+    "perfil": {
+      "voz": "echo",
+      "estilo_voz": "Voz clara e animada, tom de analista de tecnologia, ritmo médio.",
+      "tom": "analítico e objetivo, com números só quando oficiais ou medidos por fontes confiáveis",
+      "publico": "entusiastas de hardware e consoles",
+      "estilo_visual": "ilustração tecnológica com hologramas e circuitos, fundo escuro com neon ciano e magenta, sem logos, sem texto escrito e sem rostos de personagens oficiais (só silhuetas ou figuras estilizadas)",
+      "evitar": [
+        "inventar números de desempenho, resolução ou taxa de quadros que não sejam oficiais",
+        "afirmar boato, vazamento ou teoria como se fosse fato",
+        "prometer data, preço, recurso ou plataforma que não seja oficial",
+        "links, instruções ou incentivo à pirataria ou a acesso antecipado ilegal",
+        "usar trechos, imagens ou logos oficiais da Rockstar ou da Take-Two",
+        "ataques a pessoas, a outras comunidades ou a outras plataformas"
+      ],
+      "cenas": 10,
+      "categoria_youtube": "20",
+      "shorts": 0
+    }
+  },
+  {
+    "id": "gta6-historia-serie",
+    "nome": "Do Vice City ao Leonida",
+    "nicho": "retrospectiva e comparações da série GTA até GTA 6",
+    "inicio_producao": "15:30",
+    "temas": [
+      "Do GTA Vice City ao GTA 6: o que mudou em 20 anos",
+      "GTA 6 contra GTA 5: as maiores diferenças",
+      "Os maiores mapas da série GTA, comparados",
+      "A evolução dos protagonistas de GTA",
+      "A evolução dos gráficos da série GTA",
+      "As melhores estações de rádio da história de GTA",
+      "O que GTA 6 aprendeu com Red Dead Redemption 2",
+      "Os lançamentos mais marcantes da série GTA",
+      "A evolução do modo online de GTA até GTA 6",
+      "As polêmicas que marcaram a série GTA",
+      "Os melhores momentos de cada GTA",
+      "Os recordes de vendas da série GTA",
+      "Como cada GTA retratou a sua época",
+      "Ranking dos jogos da série GTA antes de GTA 6"
+    ],
+    "perfil": {
+      "voz": "fable",
+      "estilo_voz": "Voz calorosa e nostálgica, como quem relembra boas histórias entre amigos.",
+      "tom": "nostálgico, bem-humorado e informativo; rankings são opinião e devem ser ditos como tal",
+      "publico": "jogadores que acompanham a série desde o início",
+      "estilo_visual": "colagem retrô anos 80 e 2000, grão de fita VHS, cores saturadas, sem logos, sem texto escrito e sem rostos de personagens oficiais (só silhuetas ou figuras estilizadas)",
+      "evitar": [
+        "afirmar boato, vazamento ou teoria como se fosse fato",
+        "prometer data, preço, recurso ou plataforma que não seja oficial",
+        "links, instruções ou incentivo à pirataria ou a acesso antecipado ilegal",
+        "usar trechos, imagens ou logos oficiais da Rockstar ou da Take-Two",
+        "ataques a pessoas, a outras comunidades ou a outras plataformas"
+      ],
+      "cenas": 12,
+      "categoria_youtube": "20",
+      "shorts": 0
+    }
+  },
+  {
+    "id": "gta6-mitos",
+    "nome": "Mitos e Verdades GTA 6",
+    "nicho": "checagem de boatos e fake news sobre GTA 6",
+    "inicio_producao": "18:00",
+    "temas": [
+      "5 mitos sobre GTA 6 que você precisa parar de acreditar",
+      "Verdade ou boato: os vazamentos de GTA 6",
+      "Os maiores boatos sobre a data de GTA 6, checados",
+      "Mitos sobre o preço de GTA 6",
+      "Golpes e fake news de GTA 6: como se proteger",
+      "Boatos sobre o mapa de GTA 6, checados",
+      "Mitos sobre requisitos e plataformas de GTA 6",
+      "Teorias de fãs sobre GTA 6 que se provaram falsas",
+      "O que realmente aconteceu com os adiamentos de GTA 6",
+      "Verdade ou boato: o modo online de GTA 6",
+      "Os vídeos falsos de GTA 6 que enganaram a internet",
+      "Mitos sobre o desempenho de GTA 6",
+      "Perguntas de fãs sobre GTA 6, com a resposta oficial",
+      "Mitos e verdades da semana sobre GTA 6"
+    ],
+    "perfil": {
+      "voz": "coral",
+      "estilo_voz": "Voz animada e firme, com humor leve, como quem desmente um boato com um sorriso.",
+      "tom": "bem-humorado, direto e cético; cada afirmação vem com a fonte e o veredito (verdade, mentira ou sem confirmação)",
+      "publico": "fãs cansados de boato e fake news",
+      "estilo_visual": "quadrinhos pop art, cores vibrantes e traço grosso, selos de VERDADE e MENTIRA, sem logos, sem texto escrito e sem rostos de personagens oficiais (só silhuetas ou figuras estilizadas)",
+      "evitar": [
+        "afirmar boato, vazamento ou teoria como se fosse fato",
+        "prometer data, preço, recurso ou plataforma que não seja oficial",
+        "links, instruções ou incentivo à pirataria ou a acesso antecipado ilegal",
+        "usar trechos, imagens ou logos oficiais da Rockstar ou da Take-Two",
+        "ataques a pessoas, a outras comunidades ou a outras plataformas"
+      ],
+      "cenas": 8,
+      "categoria_youtube": "20",
+      "shorts": 0
+    }
+  }
+]
