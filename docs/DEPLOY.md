@@ -165,7 +165,7 @@ Nunca exponha o painel em HTTP puro na internet.
 Antes de deixar rodando, produza **um** vídeo curto, acompanhando:
 
 1. Um canal só, com `inicio_producao` `"00:00"` (já passou → o maestro começa na hora).
-2. `FABRICA_CENAS=3` (vídeo de ~1,5 min, ~⅓ do custo) e, se quiser, `FABRICA_MODELO=claude-sonnet-5-5`.
+2. Vídeo curto: **3 cenas** (~1,5 min, ~⅓ do custo). Atenção: o `perfil.cenas` do canal manda mais que `FABRICA_CENAS`; use o `canais.gta6-teste.json` (já com 3 cenas) ou ponha `cenas: 3` no perfil. Se quiser gastar menos, `FABRICA_MODELO=claude-sonnet-5-5`.
 3. Suba e olhe a aba **Escritório**: o funcionário anda pelas estações. No fim, o vídeo aparece em **Aprovar**.
 4. Aprove com um horário daqui a uns 15 minutos e confira no YouTube Studio se ficou **agendado**.
 5. Só então volte `FABRICA_CENAS` ao normal e coloque os canais reais.
