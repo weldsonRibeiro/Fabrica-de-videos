@@ -56,6 +56,13 @@ def preparar(velas: list[Vela], leitores: list[Leitor], horizonte: int = 24) -> 
     return Preparado(velas, leitores, horizonte, jmax, X, veto, vol, y)
 
 
+def com_horizonte(prep: Preparado, h: int) -> Preparado:
+    """Mesmas leituras, outro horizonte: só os rótulos mudam (evita recalcular as leituras, que é a parte cara)."""
+    n = len(prep.velas)
+    y = {i: int(prep.velas[i + h].c > prep.velas[i + 1].o) for i in prep.X if i + h < n}
+    return Preparado(prep.velas, prep.leitores, h, prep.inicio, prep.X, prep.veto, prep.vol, y)
+
+
 @dataclass
 class Resultado:
     nome: str
@@ -100,7 +107,7 @@ def rodar(prep: Preparado, cfg: Config, nome: str = "") -> Resultado:
         if pos and not pos["ativa"] and pos["idx"] == k:
             preco = v.o * (1 + slip * pos["dir"])
             valor = pos["fracao"] * caixa_antes(caixa, pos)
-            pos.update(unid=valor / preco, entrada=preco, ativa=True, eq_antes=caixa)
+            pos.update(unid=valor / preco, entrada=preco, ativa=True, eq_antes=caixa, entrada_bruta=v.o)
             caixa += -pos["dir"] * pos["unid"] * preco - valor * taxa
             pos["stop"] = preco * (1 - pos["dir"] * pos["stop_pct"])
         # (1) saída: stop dentro da vela (se tocou, assume que veio primeiro) ou fim do prazo
@@ -117,7 +124,8 @@ def rodar(prep: Preparado, cfg: Config, nome: str = "") -> Resultado:
                 caixa += pos["dir"] * pos["unid"] * efetivo - pos["unid"] * efetivo * taxa
                 pnl = caixa - pos["eq_antes"]
                 trades.append({"t_entrada": velas[pos["idx"]].t, "t_saida": v.t, "dir": pos["dir"], "p": pos["p"],
-                               "fracao": pos["fracao"], "ret_capital": pnl / pos["eq_antes"], "parou_no_stop": preco_saida != v.c})
+                               "fracao": pos["fracao"], "ret_capital": pnl / pos["eq_antes"], "parou_no_stop": preco_saida != v.c,
+                               "bruto": pos["dir"] * (preco_saida / pos["entrada_bruta"] - 1)})   # variação do preço, antes de taxa e derrapagem
                 pos = None
         eq = caixa + (pos["dir"] * pos["unid"] * v.c if pos and pos["ativa"] else 0)
         equity.append(eq)

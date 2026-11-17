@@ -126,10 +126,67 @@ def principal(argv: list[str] | None = None) -> int:
     s.add_argument("--capital", type=float, default=10000.0)
     s.add_argument("--short", action="store_true")
 
+    s = sub.add_parser("coletar", help="coleta 24 h dados de curto prazo (velas de 1 min + melhor compra/venda e spread) no SEU computador")
+    s.add_argument("--fonte", choices=["coinbase", "binance"], default="binance")
+    s.add_argument("--simbolo", help="padrão: BTC-USD (coinbase) ou BTCUSDT (binance)")
+    s.add_argument("--pasta", default="dados-curto")
+    s.add_argument("--livro-cada", type=float, default=10.0, help="segundos entre fotos do melhor preço de compra/venda (padrão 10)")
+    s.add_argument("--uma-vez", action="store_true", help="coleta um ciclo e sai")
+    s.add_argument("--resumo", action="store_true", help="só mostra o que já foi coletado (spread médio, dias, velas) e sai")
+    s = sub.add_parser("curto", help="H2 (curto prazo, PRÉ-REGISTRADA): mede o ganho bruto por operação e o custo de equilíbrio com velas de 1 min")
+    s.add_argument("--dados", required=True, help="CSV de velas de 1 min (baixe com: baixar --intervalo 1m)")
+    s.add_argument("--taxa-bps", type=float, default=7.5, help="SUA taxa por lado em bps (Binance spot: 10 padrão, 7,5 com BNB). É um fato da conta, fica registrada")
+    s.add_argument("--json", help="salva o resultado neste arquivo")
+
     s = sub.add_parser("status", help="mostra o estado do vigia (posição simulada, resultado, último sinal)")
     s.add_argument("--pasta", default="dados-mesa")
 
     a = p.parse_args(argv)
+    if a.cmd == "coletar":
+        from . import coletor
+        from .fontes import FONTES
+
+        if a.resumo:
+            r = coletor.resumo(a.pasta)
+            if "livro" not in r and "velas" not in r:
+                raise SystemExit(f"nada coletado em {a.pasta}/ ainda (rode `coletar` primeiro)")
+            if "livro" in r:
+                l = r["livro"]
+                print(f"livro de ofertas: {l['fotos']} fotos em {l['dias']} dia(s) · spread médio {l['spread_bps_medio']:.3f} bps · mediana {l['spread_bps_mediana']:.3f} · "
+                      f"p95 {l['spread_bps_p95']:.3f} · máximo {l['spread_bps_max']:.3f}  (cruzar o spread custa metade disso por lado)")
+            if "velas" in r:
+                v = r["velas"]
+                print(f"velas de 1 min: {v['n']} ({v['dias']} dia(s)) de {v['de']} a {v['ate']} UTC")
+            return 0
+        simbolo = a.simbolo or ("BTC-USD" if a.fonte == "coinbase" else "BTCUSDT")
+        c = coletor.Coletor(FONTES[a.fonte](simbolo, "1m"), a.pasta)
+        print(f"Coletando {simbolo} ({a.fonte}): velas de 1 min + melhor compra/venda a cada {a.livro_cada:g} s em {a.pasta}/. Só leitura de dados públicos. Ctrl+C para parar.", flush=True)
+        try:
+            if a.uma_vez:
+                print(c.passo())
+            else:
+                c.rodar(a.livro_cada)
+        except KeyboardInterrupt:
+            print("parado. (resumo: python -m mesa coletar --resumo)")
+        return 0
+    if a.cmd == "curto":
+        from .curto import PROTOCOLO_H2, avaliar_curto, formatar as formatar_curto
+
+        velas = dados.ler_csv(a.dados)
+        if len(velas) < 2 or velas[1].t - velas[0].t != 60:
+            raise SystemExit("esta hipótese usa velas de 1 minuto: baixe com `baixar --fonte binance --intervalo 1m --desde AAAA-MM-DD --saida ...`")
+        print(f"Protocolo fixo: horizontes {PROTOCOLO_H2['horizontes_min']} min, {PROTOCOLO_H2['n_testes']} testes, custo {a.taxa_bps:g}+{PROTOCOLO_H2['slippage_bps']:g} bps por lado. "
+              "Se reprovar, a hipótese está encerrada.\nCalculando as leituras (alguns minutos)…", flush=True)
+        try:
+            v = avaliar_curto(velas, a.taxa_bps)
+        except ValueError as e:
+            raise SystemExit(str(e))
+        print("\n" + formatar_curto(v))
+        if a.json:
+            Path(a.json).write_text(json.dumps(v, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"\nresultado completo em {a.json}")
+        print("\n" + AVISO)
+        return 0
     if a.cmd == "vigiar":
         from .fontes import FONTES
         from .vigia import Vigia

@@ -120,6 +120,43 @@ python -m mesa hipotese funding --dados btc.csv --funding bybit --json h1.json  
 - **REPROVADA** → a hipótese está encerrada. **Não** mude nada e rode de novo; para testar outra ideia, ela precisa ser escrita antes.
 - **APROVADA** → vira candidata a **paper trading ao vivo** (≥ 8 semanas, ≥ 30 operações). **Não** é luz verde para dinheiro real. Me avise e eu preparo o vigia com o leitor de funding (no servidor ele não funciona, as APIs bloqueiam IPs dos EUA).
 
+## Passo 8c — Curto prazo na Binance: coletar 24 h e medir o custo de equilíbrio (H2)
+
+Objetivo: ganhar na **quantidade** de operações. A conta que decide tudo: **ganho bruto médio por operação** tem de ser **maior** que o custo de entrar e sair (2 × taxa por lado). Em vez de apostar, medimos.
+
+Tudo aqui é **simulação e leitura de dados públicos**: nenhuma chave da Binance é pedida e nenhuma ordem é enviada.
+
+**1) Descubra a SUA taxa** (app/site da Binance → perfil → *Nível de taxas*): normalmente 0,10% por lado no spot, 0,075% pagando com BNB. Alguns pares têm taxa zero em promoções. Quanto menor, melhor para o teste.
+
+**2) Baixe ~3 meses de velas de 1 minuto** (≈ 130 mil velas; leva alguns minutos):
+```powershell
+python -m mesa baixar --fonte binance --intervalo 1m --desde 2026-08-15 --saida btc1m.csv
+```
+
+**3) Rode o teste H2** (protocolo fixo no código: horizontes de 5, 15, 30 e 60 min × 2 agregadores = 8 testes, correção de Bonferroni):
+```powershell
+python -m mesa curto --dados btc1m.csv --taxa-bps 7.5 --json h2.json
+```
+Troque `7.5` pela sua taxa em bps (0,10% = 10; 0,075% = 7,5). A taxa é um fato da sua conta, por isso fica registrada no resultado.
+
+Como ler:
+- **PARTE 1** mostra, sem custo nenhum, quantas operações por dia os agentes fariam e o **ganho bruto por operação** em bps (1 bp = 0,01%). O **equilíbrio** é a maior taxa por lado com que ainda se empata. Se for **menor** que a sua taxa (+1 bp de derrapagem), a estratégia perde dinheiro — por mais operações que faça, só multiplica a perda.
+- **PARTE 2** roda com o seu custo e aplica os critérios: ≥ 200 operações, p ≤ 0,00625 e retorno positivo no período inteiro e nas duas metades.
+- **REPROVADA** → hipótese encerrada, sem ajustar números. **APROVADA** → vira candidata a paper trading ao vivo (≥ 8 semanas, ≥ 200 operações), **não** a dinheiro real.
+
+**4) Coletor 24 h** (deixe o computador ligado; Ctrl+C para parar). Guarda velas de 1 min e a foto do melhor preço de compra/venda a cada 10 s — com isso medimos o **spread real**, que é um custo oculto:
+```powershell
+python -m mesa coletar --fonte binance --pasta dados-curto
+python -m mesa coletar --pasta dados-curto --resumo      # em outro terminal: dias coletados e spread médio/p95
+```
+Os arquivos (`velas1m.csv`, `livro.csv`) ficam na pasta e podem ser usados no passo 3 (`--dados dados-curto/velas1m.csv`) quando tiver dias suficientes.
+
+**5) Agentes ao vivo em 1–5 minutos (simulado)**, para ver as probabilidades chegando:
+```powershell
+python -m mesa vigiar --fonte binance --intervalo 1m --horizonte 15 --checagem 15 --taxa 7.5 --slippage 1 --pasta dados-mesa-1m
+```
+Se, no passo 3, a estratégia for reprovada, esse modo ao vivo só vai confirmar em tempo real o que o teste já mostrou: tudo bloqueado por "valor esperado não cobre os custos".
+
 ## Passo 9 — Atualizar o código quando eu avisar
 
 ```bash

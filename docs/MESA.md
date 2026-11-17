@@ -60,7 +60,7 @@ Cada leitor só recebe o passado. Os de fora (medo e ganância, funding) guardam
 
 ## Hipóteses pré-registradas (`mesa hipotese`)
 
-Parâmetros e critérios de aprovação **fixados no código antes de rodar** (sem opções de linha de comando para mexer). Hoje há uma: **H1 (funding)**. Veja `docs/RESULTADOS.md` e `docs/MESA_COMPUTADOR.md`.
+Parâmetros e critérios de aprovação **fixados no código antes de rodar** (sem opções de linha de comando para mexer). Hoje há duas: **H1 (funding)** e **H2 (curto prazo, velas de 1 min: `mesa curto`)**, que mede o ganho bruto por operação e o **custo de equilíbrio** contra a sua taxa real. O **coletor 24 h** (`mesa coletar`) junta velas de 1 min e o spread do livro de ofertas. Veja `docs/RESULTADOS.md` e `docs/MESA_COMPUTADOR.md` (Passo 8c).
 
 ## Varredura de horizontes (`mesa varrer`)
 

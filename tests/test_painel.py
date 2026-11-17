@@ -11,6 +11,7 @@ from pathlib import Path
 from fabrica.armazem import Armazem
 from fabrica.maestro import Maestro
 from fabrica.modelos import Canal, Status
+from fabrica.fuso import agora_local
 from fabrica.painel import Painel
 from fabrica.pipeline import Pipeline
 from fabrica.provedores.falso import ProvedorFalso, PublicadorFalso
@@ -27,8 +28,9 @@ class TestPainel(unittest.TestCase):
         self.armazem = Armazem(raiz / "dados")
         canais = [Canal("a", "Canal A", "x", "05:30", ["Tema A"])]
         maestro = Maestro(self.armazem, Pipeline(ProvedorFalso(), self.armazem), canais, PublicadorFalso())
-        maestro.tick(datetime(2026, 11, 16, 5, 30))
-        self.id = "2026-11-16-a"
+        hoje = agora_local().replace(hour=5, minute=30, second=0)      # "hoje" de verdade: o painel soma o gasto do dia corrente
+        maestro.tick(hoje)
+        self.id = f"{hoje:%Y-%m-%d}-a"
 
         # os provedores falsos não criam arquivos: cria os do pacote dentro da pasta de saída
         v = self.armazem.carregar_video(self.id)
