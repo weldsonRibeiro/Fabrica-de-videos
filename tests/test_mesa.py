@@ -1099,3 +1099,54 @@ class TestCurtoPrazo(unittest.TestCase):
             with contextlib.redirect_stdout(saida):
                 self.assertEqual(principal(["coletar", "--pasta", tmp, "--resumo"]), 0)
             self.assertIn("spread médio", saida.getvalue())
+
+
+class TestPainelCurtoEColeta(TestPaginaDaMesa):
+    def test_painel_mostra_h2_e_coleta_mesmo_sem_vigia(self):
+        from mesa.coletor import Coletor
+        from mesa.curto import avaliar_curto
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.preparar(tmp)
+            self.pedir(f"/?k={self.CHAVE}")
+            d = json.loads(self.pedir("/api/estado")[1])
+            self.assertIsNone(d["curto"])
+            self.assertIsNone(d["coleta"])
+            velas = dados.sintetico(6000, seed=3, modo="ruido", passo=60)
+            (Path(tmp) / "curto.json").write_text(json.dumps(avaliar_curto(velas, 10.0, min_velas=5000)), encoding="utf-8")
+            dados.salvar_csv(velas[:50], Path(tmp) / "velas1m.csv")
+            (Path(tmp) / "livro.csv").write_text("t,bid,ask,bid_qty,ask_qty\n100,100.0,100.1,1,1\n", encoding="utf-8")
+            d = json.loads(self.pedir("/api/estado")[1])
+            self.assertEqual(len(d["curto"]["testes"]), 8)
+            self.assertFalse(d["curto"]["aprovado"])
+            self.assertEqual(d["coleta"]["velas"]["n"], 50)
+            self.assertEqual(d["coleta"]["livro"]["fotos"], 1)
+            pagina = self.pedir("/")[1]
+            self.assertIn(b"desenharCurto", pagina)
+            self.assertIn(b"Coletor 24 h", pagina)
+
+    def test_cli_painel_copia_o_resultado_e_guarda_a_chave(self):
+        import threading
+
+        with tempfile.TemporaryDirectory() as tmp:
+            h2 = Path(tmp) / "h2.json"
+            h2.write_text("{}", encoding="utf-8")
+            pasta = Path(tmp) / "m"
+
+            class Srv:
+                def serve_forever(self):
+                    raise KeyboardInterrupt
+
+            with mock.patch("mesa.painel.servidor", return_value=Srv()) as sv, mock.patch("webbrowser.open"):
+                self.assertEqual(principal(["painel", "--pasta", str(pasta), "--curto", str(h2)]), 0)
+            self.assertEqual((pasta / "curto.json").read_text(), "{}")
+            chave = (pasta / "painel.chave").read_text()
+            self.assertGreaterEqual(len(chave), 16)
+            self.assertEqual(sv.call_args[0][1], chave)
+            with mock.patch("mesa.painel.servidor", return_value=Srv()) as sv, mock.patch("webbrowser.open"):
+                principal(["painel", "--pasta", str(pasta)])
+            self.assertEqual(sv.call_args[0][1], chave)                                           # a mesma chave nas próximas vezes
+            self.assertEqual(sv.call_args[0][2], "127.0.0.1")                                     # por padrão, só o próprio computador
+            with mock.patch("mesa.painel.servidor", return_value=Srv()) as sv, mock.patch("webbrowser.open"):
+                principal(["painel", "--pasta", str(pasta), "--celular"])
+            self.assertEqual(sv.call_args[0][2], "0.0.0.0")                                       # --celular abre para a rede local

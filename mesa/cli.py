@@ -129,14 +129,20 @@ def principal(argv: list[str] | None = None) -> int:
     s = sub.add_parser("coletar", help="coleta 24 h dados de curto prazo (velas de 1 min + melhor compra/venda e spread) no SEU computador")
     s.add_argument("--fonte", choices=["coinbase", "binance"], default="binance")
     s.add_argument("--simbolo", help="padrão: BTC-USD (coinbase) ou BTCUSDT (binance)")
-    s.add_argument("--pasta", default="dados-curto")
+    s.add_argument("--pasta", default="dados-mesa", help="pasta de dados (a mesma do painel)")
     s.add_argument("--livro-cada", type=float, default=10.0, help="segundos entre fotos do melhor preço de compra/venda (padrão 10)")
     s.add_argument("--uma-vez", action="store_true", help="coleta um ciclo e sai")
     s.add_argument("--resumo", action="store_true", help="só mostra o que já foi coletado (spread médio, dias, velas) e sai")
     s = sub.add_parser("curto", help="H2 (curto prazo, PRÉ-REGISTRADA): mede o ganho bruto por operação e o custo de equilíbrio com velas de 1 min")
     s.add_argument("--dados", required=True, help="CSV de velas de 1 min (baixe com: baixar --intervalo 1m)")
     s.add_argument("--taxa-bps", type=float, default=10.0, help="SUA taxa por lado em bps (Binance spot: 10 padrão, 7,5 com BNB). É um fato da conta, fica registrada")
-    s.add_argument("--json", help="salva o resultado neste arquivo")
+    s.add_argument("--json", help="salva o resultado também neste arquivo")
+    s.add_argument("--pasta", default="dados-mesa", help="grava o resultado em PASTA/curto.json, de onde o painel lê")
+    s = sub.add_parser("painel", help="abre o painel no navegador, no seu computador (resultado do H2, coletor, backtest, vigia)")
+    s.add_argument("--pasta", default="dados-mesa")
+    s.add_argument("--porta", type=int, default=8080)
+    s.add_argument("--curto", help="resultado do H2 já salvo (ex.: h2.json) para mostrar no painel")
+    s.add_argument("--celular", action="store_true", help="deixa abrir no celular, na MESMA rede Wi-Fi (continua exigindo a chave; não fica na internet)")
 
     s = sub.add_parser("status", help="mostra o estado do vigia (posição simulada, resultado, último sinal)")
     s.add_argument("--pasta", default="dados-mesa")
@@ -169,6 +175,48 @@ def principal(argv: list[str] | None = None) -> int:
         except KeyboardInterrupt:
             print("parado. (resumo: python -m mesa coletar --resumo)")
         return 0
+    if a.cmd == "painel":
+        import secrets
+        import shutil
+        import webbrowser
+
+        from .painel import servidor
+
+        pasta = Path(a.pasta)
+        pasta.mkdir(parents=True, exist_ok=True)
+        if a.curto:
+            shutil.copyfile(a.curto, pasta / "curto.json")
+        arq_chave = pasta / "painel.chave"
+        chave = os.environ.get("FABRICA_PAINEL_CHAVE") or (arq_chave.read_text(encoding="utf-8").strip() if arq_chave.exists() else "")
+        if len(chave) < 16:
+            chave = secrets.token_urlsafe(24)
+            arq_chave.write_text(chave, encoding="utf-8")
+        try:
+            srv = servidor(pasta, chave, "0.0.0.0" if a.celular else "127.0.0.1", a.porta)
+        except OSError as e:
+            raise SystemExit(f"não consegui abrir a porta {a.porta} ({e}). Tente outra: --porta 8081")
+        url = f"http://127.0.0.1:{a.porta}/?k={chave}"
+        if a.celular:
+            import socket
+
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sk:
+                    sk.connect(("192.0.2.1", 9))      # só descobre a rede; não envia nada
+                    ip = sk.getsockname()[0]
+            except OSError:
+                ip = "IP-DO-SEU-COMPUTADOR"
+            print(f"No CELULAR (mesma rede Wi-Fi): http://{ip}:{a.porta}/?k={chave}\n"
+                  "Se o Windows perguntar sobre o firewall, permita só em 'Rede privada'.", flush=True)
+        print(f"No computador: {url}\n(Ctrl+C para fechar)", flush=True)
+        try:
+            webbrowser.open(url)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            srv.serve_forever()
+        except KeyboardInterrupt:
+            print("painel fechado.")
+        return 0
     if a.cmd == "curto":
         from .curto import PROTOCOLO_H2, avaliar_curto, formatar as formatar_curto
 
@@ -182,6 +230,9 @@ def principal(argv: list[str] | None = None) -> int:
         except ValueError as e:
             raise SystemExit(str(e))
         print("\n" + formatar_curto(v))
+        Path(a.pasta).mkdir(parents=True, exist_ok=True)
+        (Path(a.pasta) / "curto.json").write_text(json.dumps(v, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"\nresultado no painel: python -m mesa painel --pasta {a.pasta}")
         if a.json:
             Path(a.json).write_text(json.dumps(v, ensure_ascii=False, indent=2), encoding="utf-8")
             print(f"\nresultado completo em {a.json}")
