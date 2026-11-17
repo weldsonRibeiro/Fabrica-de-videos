@@ -50,6 +50,8 @@ table.bt th:first-child,table.bt td:first-child{text-align:left}table.bt td{padd
 <h2>Paper trading ao vivo</h2><div class="card"><div id="av-corpo" class="suave">—</div></div>
 <h2>Backtest em dados reais</h2><div class="card"><div class="suave" id="bt-msg">—</div><div id="bt-corpo"></div></div>
 <h2>Horizontes (varredura corrigida)</h2><div class="card"><div class="suave" id="vr-msg">—</div><div id="vr-corpo"></div></div>
+<h2>Curto prazo — H2 (velas de 1 min)</h2><div class="card"><div class="suave" id="ct-msg">—</div><div id="ct-corpo"></div></div>
+<h2>Coletor 24 h</h2><div class="card"><div id="co-corpo" class="suave">—</div></div>
 <h2>Operações simuladas</h2><div class="card" id="trades"></div>
 <h2>Eventos</h2><div class="card log" id="eventos"></div>
 <p class="aviso">⚠️ Simulação com preço real. Nenhuma ordem real é enviada. Passado não garante futuro; não é recomendação financeira.</p>
@@ -58,7 +60,7 @@ const $=id=>document.getElementById(id),f=(n,d=2)=>n.toLocaleString("pt-BR",{min
 async function atualizar(){
   let r;try{r=await fetch("/api/estado",{credentials:"same-origin"});}catch(e){return}
   if(r.status===401){document.body.textContent="Acesso negado. Abra o link com a chave (?k=...).";return}
-  const d=await r.json();if(!d.estado){$("preco").textContent="aguardando o primeiro ciclo…";return}
+  const d=await r.json();desenharCurto(d.curto);desenharColeta(d.coleta);if(!d.estado){$("preco").textContent="—";$("atualizado").textContent="o vigia ainda não rodou (opcional: python -m mesa vigiar). Os cartões de curto prazo e do coletor abaixo funcionam sem ele.";return}
   const e=d.estado,c=e.corretora,res=e.equity/c.capital_inicial-1;
   $("preco").textContent="US$ "+f(e.preco);$("atualizado").textContent="atualizado "+e.atualizado_em.replace("T"," ").slice(0,19)+" UTC";
   $("equity").textContent=f(e.equity);const rs=$("res");rs.textContent=(res>=0?"+":"")+f(res*100)+"%";rs.className="grande "+(res>=0?"pos":"neg");
@@ -72,6 +74,32 @@ async function atualizar(){
   for(const x of ts){const l=el("div","linha");l.append(el("span","",(x.direcao>0?"compra":"venda")+" · "+x.motivo),el("span",x.ret_capital>=0?"pos":"neg",(x.ret_capital>=0?"+":"")+f(x.ret_capital*100)+"%"));t.append(l)}
   $("eventos").textContent=d.eventos.join("\\n")||"—";
   desenharBacktest(d.backtest,d.backtest_estado);desenharVarredura(d.varredura,d.varredura_estado);desenharAoVivo(d.ao_vivo);
+}
+function desenharCurto(c){
+  const msg=$("ct-msg"),corpo=$("ct-corpo");corpo.replaceChildren();
+  if(!c){msg.textContent="ainda sem resultado. Rode: python -m mesa curto --dados btc1m.csv";return}
+  const custo=c.taxa_bps+c.protocolo.slippage_bps,pc=x=>(x>=0?"+":"")+f(x*100,1)+"%";
+  msg.textContent=c.dados.velas+" velas de 1 min · "+c.dados.de+" → "+c.dados.ate+" ("+f(c.dados.dias,0)+" dias) · custo "+f(custo,1)+" bps por lado · gerado "+c.gerado_em.replace("T"," ").slice(0,16)+" UTC";
+  const v=el("div","grande "+(c.aprovado?"pos":"neg"),c.aprovado?"APROVADA (só para paper trading)":"REPROVADA");corpo.append(v);
+  corpo.append(el("div","suave","Equilíbrio = a maior taxa por lado com que a estratégia ainda empata. Precisa ser maior que "+f(custo,1)+" bps (a sua taxa + derrapagem); negativo = perde até sem custo."));
+  const t=el("table","bt"),h=el("tr");for(const x of ["teste","ops/dia","bruto/op","equilíbrio","retorno","ops"])h.append(el("th","",x));t.append(h);
+  for(const x of c.testes){const l=el("tr");l.append(el("td",x.passou?"ev":"",x.nome.replace("agentes + ","")+(x.passou?" ✓":"")));
+    l.append(el("td","",f(x.ops_por_dia,1)));
+    l.append(el("td",x.bruto_medio_bps>=0?"pos":"neg",(x.bruto_medio_bps>=0?"+":"")+f(x.bruto_medio_bps,1)+" bp"));
+    l.append(el("td",x.equilibrio_bps_por_lado>=custo?"pos":"neg",(x.equilibrio_bps_por_lado>=0?"+":"")+f(x.equilibrio_bps_por_lado,1)+" bp"));
+    l.append(el("td",x.retorno>=0?"pos":"neg",pc(x.retorno)));l.append(el("td","",String(x.operacoes)));t.append(l)}
+  corpo.append(t);
+  corpo.append(el("div","suave","Critérios fixos: "+c.protocolo.aprovacao.join("; ")+". "+c.veredito));
+  corpo.lastChild.style.marginTop="8px";
+}
+function desenharColeta(c){
+  const corpo=$("co-corpo");corpo.replaceChildren();
+  if(!c||(!c.livro&&!c.velas)){corpo.textContent="nada coletado ainda. Rode: python -m mesa coletar";return}
+  const linha=(k,v)=>{const l=el("div","linha");l.append(el("span","",k),el("span","",v));corpo.append(l)};
+  if(c.velas)linha("velas de 1 min",c.velas.n+" ("+f(c.velas.dias,1)+" dias) · até "+c.velas.ate+" UTC");
+  if(c.livro){linha("fotos do livro de ofertas",c.livro.fotos+" em "+f(c.livro.dias,2)+" dia(s)");
+    linha("spread (compra→venda)","médio "+f(c.livro.spread_bps_medio,3)+" bps · p95 "+f(c.livro.spread_bps_p95,3)+" · máx "+f(c.livro.spread_bps_max,2));
+    corpo.append(el("div","suave","Cruzar o spread custa metade disso por lado; é um custo além da taxa da corretora."))}
 }
 function desenharAoVivo(a){
   const c=$("av-corpo");c.replaceChildren();if(!a){c.textContent="começa a contar no próximo ciclo";return}
@@ -142,6 +170,25 @@ def _ao_vivo(estado: dict | None) -> dict | None:
             "criterio": {"dias": CRITERIO_DIAS, "operacoes": CRITERIO_OPS}}
 
 
+_cache_coleta: dict = {}
+
+
+def _coleta(pasta: Path) -> dict | None:
+    """Resumo do coletor (velas de 1 min e spread). Recalcula só quando os arquivos mudam: o histórico pode ser grande."""
+    from .coletor import resumo
+
+    marca = tuple((a.stat().st_mtime_ns, a.stat().st_size) if a.exists() else None for a in (pasta / "velas1m.csv", pasta / "livro.csv"))
+    if marca == (None, None):
+        return None
+    chave = str(pasta.resolve())
+    if _cache_coleta.get(chave, (None,))[0] != marca:
+        try:
+            _cache_coleta[chave] = (marca, resumo(pasta))
+        except (OSError, ValueError, KeyError):
+            return None
+    return _cache_coleta[chave][1]
+
+
 def _estado(pasta: Path) -> dict:
     arq = pasta / "estado.json"
     eventos = []
@@ -151,7 +198,8 @@ def _estado(pasta: Path) -> dict:
     estado = _json(arq)
     return {"estado": estado, "ao_vivo": _ao_vivo(estado), "eventos": eventos, "backtest": _json(pasta / "backtest.json"),
             "backtest_estado": _json(pasta / "backtest.estado.json"),
-            "varredura": _json(pasta / "varredura.json"), "varredura_estado": _json(pasta / "varredura.estado.json")}
+            "varredura": _json(pasta / "varredura.json"), "varredura_estado": _json(pasta / "varredura.estado.json"),
+            "curto": _json(pasta / "curto.json"), "coleta": _coleta(pasta)}
 
 
 def servidor(pasta: Path | str, chave: str, host: str = "127.0.0.1", porta: int = 8080) -> ThreadingHTTPServer:

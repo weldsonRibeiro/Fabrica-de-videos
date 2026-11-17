@@ -144,12 +144,18 @@ Como ler:
 - **PARTE 2** roda com o seu custo e aplica os critérios: ≥ 200 operações, p ≤ 0,00625 e retorno positivo no período inteiro e nas duas metades.
 - **REPROVADA** → hipótese encerrada, sem ajustar números. **APROVADA** → vira candidata a paper trading ao vivo (≥ 8 semanas, ≥ 200 operações), **não** a dinheiro real.
 
+**3b) Veja no painel** (abre no navegador, só no seu computador):
+```powershell
+python -m mesa painel
+```
+O cartão **Curto prazo — H2** mostra o veredito, as 8 linhas (operações por dia, ganho bruto, equilíbrio, retorno) e o cartão **Coletor 24 h** mostra o spread real. O `curto` já grava o resultado em `dados-mesa/curto.json`, de onde o painel lê. Se você rodou com `--json h2.json`, use `python -m mesa painel --curto h2.json`.
+
 **4) Coletor 24 h** (deixe o computador ligado; Ctrl+C para parar). Guarda velas de 1 min e a foto do melhor preço de compra/venda a cada 10 s — com isso medimos o **spread real**, que é um custo oculto:
 ```powershell
-python -m mesa coletar --fonte binance --pasta dados-curto
-python -m mesa coletar --pasta dados-curto --resumo      # em outro terminal: dias coletados e spread médio/p95
+python -m mesa coletar --fonte binance
+python -m mesa coletar --resumo      # em outro terminal: dias coletados e spread médio/p95
 ```
-Os arquivos (`velas1m.csv`, `livro.csv`) ficam na pasta e podem ser usados no passo 3 (`--dados dados-curto/velas1m.csv`) quando tiver dias suficientes.
+Os arquivos (`velas1m.csv`, `livro.csv`) ficam na pasta e podem ser usados no passo 3 (`--dados dados-mesa/velas1m.csv`) quando tiver dias suficientes.
 
 **5) Agentes ao vivo em 1–5 minutos (simulado)**, para ver as probabilidades chegando:
 ```powershell
