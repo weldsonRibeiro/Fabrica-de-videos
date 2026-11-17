@@ -48,6 +48,7 @@ table.bt th:first-child,table.bt td:first-child{text-align:left}table.bt td{padd
 <div class="barra"><b></b><i id="marcador" style="left:50%"></i></div><div class="suave" style="display:flex;justify-content:space-between"><span>queda</span><span id="pa"></span><span>alta</span></div>
 <div id="leituras" style="margin-top:8px"></div></div>
 <h2>Backtest em dados reais</h2><div class="card"><div class="suave" id="bt-msg">—</div><div id="bt-corpo"></div></div>
+<h2>Horizontes (varredura corrigida)</h2><div class="card"><div class="suave" id="vr-msg">—</div><div id="vr-corpo"></div></div>
 <h2>Operações simuladas</h2><div class="card" id="trades"></div>
 <h2>Eventos</h2><div class="card log" id="eventos"></div>
 <p class="aviso">⚠️ Simulação com preço real. Nenhuma ordem real é enviada. Passado não garante futuro; não é recomendação financeira.</p>
@@ -69,7 +70,18 @@ async function atualizar(){
   if(!ts.length)t.append(el("div","suave","nenhuma operação fechada ainda"));
   for(const x of ts){const l=el("div","linha");l.append(el("span","",(x.direcao>0?"compra":"venda")+" · "+x.motivo),el("span",x.ret_capital>=0?"pos":"neg",(x.ret_capital>=0?"+":"")+f(x.ret_capital*100)+"%"));t.append(l)}
   $("eventos").textContent=d.eventos.join("\\n")||"—";
-  desenharBacktest(d.backtest,d.backtest_estado);
+  desenharBacktest(d.backtest,d.backtest_estado);desenharVarredura(d.varredura,d.varredura_estado);
+}
+function desenharVarredura(v,est){
+  const msg=$("vr-msg"),corpo=$("vr-corpo");corpo.replaceChildren();
+  if(!v){msg.textContent=est?est.mensagem:"começa sozinha depois do backtest";return}
+  msg.textContent=v.n_testes+" testes · limite corrigido p ≤ "+v.alfa_corrigido.toFixed(4)+" · "+v.config.de+" → "+v.config.ate;
+  const ul=el("ul","veredito");for(const l of v.veredito)ul.append(el("li","",l));corpo.append(ul);
+  const t=el("table","bt"),h=el("tr");for(const x of ["horizonte","lógica tudo","lógica teste","média tudo","Brier"])h.append(el("th","",x));t.append(h);
+  for(const ph of v.por_horizonte){const l=el("tr");l.append(el("td","",ph.horizonte+" h"));
+    for(const x of [ph.completo[0].retorno,ph.teste[0].retorno,ph.completo[1].retorno])l.append(el("td",x>=0?"pos":"neg",(x>=0?"+":"")+f(x*100,1)+"%"));
+    l.append(el("td","",f(ph.calibracao.brier,4)));t.append(l)}
+  corpo.append(t);
 }
 function desenharBacktest(bt,est){
   const msg=$("bt-msg"),corpo=$("bt-corpo");corpo.replaceChildren();
@@ -107,7 +119,8 @@ def _estado(pasta: Path) -> dict:
     if log.exists():
         eventos = log.read_text(encoding="utf-8").splitlines()[-15:]
     return {"estado": _json(arq), "eventos": eventos, "backtest": _json(pasta / "backtest.json"),
-            "backtest_estado": _json(pasta / "backtest.estado.json")}
+            "backtest_estado": _json(pasta / "backtest.estado.json"),
+            "varredura": _json(pasta / "varredura.json"), "varredura_estado": _json(pasta / "varredura.estado.json")}
 
 
 def servidor(pasta: Path | str, chave: str, host: str = "127.0.0.1", porta: int = 8080) -> ThreadingHTTPServer:

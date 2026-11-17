@@ -90,6 +90,14 @@ python -m mesa backtest --dados btc.csv --short                 # permite vender
 ```
 Custos são decisivos: **teste sempre com os custos reais da sua corretora**. Vantagens pequenas costumam sumir com 0,10% de taxa + 0,05% de derrapagem por lado.
 
+### Varredura de horizontes (com a correção certa)
+
+Em vez de testar horizontes um a um (e ficar com o que "deu certo"), rode todos de uma vez, **com a lista definida antes de olhar o resultado**:
+```bash
+python -m mesa varrer --dados btc.csv --horizontes 4,8,12,24,48,96 --json varredura.json
+```
+O resultado corrige pelo **número de testes feitos** (horizontes × estratégias): o limite de significância é dividido por esse número. Um candidato só "sobrevive" se passar nessa correção **e** for positivo também nos últimos 12 meses. O veredito diz quantos positivos você esperaria só por sorte. Mesmo quem sobrevive é uma **hipótese**: a confirmação limpa é o paper trading ao vivo. O servidor já roda essa varredura sozinho e mostra na página de status.
+
 ## Passo 8 — Ao vivo, simulado, no seu computador (opcional)
 
 O **servidor do Railway já faz isso 24 h** (veja o Passo 10). Rodar também no computador só duplica o resultado, mas serve para entender o funcionamento:

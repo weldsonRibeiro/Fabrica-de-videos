@@ -89,6 +89,11 @@ def principal(argv: list[str] | None = None) -> int:
     comum(s)
     s.add_argument("--meses-teste", type=int, default=12, help="últimos N meses tratados como teste (padrão 12)")
     s.add_argument("--json", help="salva o relatório completo neste arquivo")
+    s = sub.add_parser("varrer", help="roda o backtest em vários horizontes e CORRIGE pelo nº de testes (evita achar vantagem por sorte)")
+    comum(s)
+    s.add_argument("--horizontes", default="4,8,12,24,48,96", help="lista em horas, separada por vírgula (defina ANTES de olhar os resultados)")
+    s.add_argument("--meses-teste", type=int, default=12)
+    s.add_argument("--json", help="salva o resultado completo neste arquivo")
     s = sub.add_parser("sinal", help="recomendação SIMULADA para a última vela e registro no diário")
     comum(s)
     s.add_argument("--diario", required=True)
@@ -208,6 +213,18 @@ def principal(argv: list[str] | None = None) -> int:
         if a.json:
             Path(a.json).write_text(json.dumps(rel, ensure_ascii=False, indent=2), encoding="utf-8")
             print(f"\nrelatório completo em {a.json}")
+    elif a.cmd == "varrer":
+        from .varredura import formatar as formatar_varredura, varrer
+
+        lista, avisos = montar_leitores(a, velas)
+        hs = [int(x) for x in a.horizontes.split(",") if x.strip()]
+        v = varrer(velas, lista, cfg, hs, meses_teste=a.meses_teste, avisos=avisos, aoprogresso=lambda h: print(f"  horizonte {h} h pronto", flush=True))
+        print("\n" + formatar_varredura(v))
+        for av in avisos:
+            print("  ! " + av)
+        if a.json:
+            Path(a.json).write_text(json.dumps(v, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"\nresultado completo em {a.json}")
     elif a.cmd == "sinal":
         lista, _ = montar_leitores(a, velas)
         s = gerar_sinal(velas, lista, cfg)
