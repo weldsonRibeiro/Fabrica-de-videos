@@ -757,3 +757,85 @@ class TestRelatorioNoLog(unittest.TestCase):
                                                      espera_s=0, dormir=lambda s: ciclos.__setitem__("n", ciclos["n"] + 1), parar=lambda: ciclos["n"] >= 2)
                 t.join(5)
             self.assertEqual(len(chamadas), 1)                                            # recalculou uma vez, mesmo com relatório recente
+
+
+class TestVarredura(unittest.TestCase):
+    def test_estrutura_e_correcao_pelo_numero_de_testes(self):
+        from mesa.varredura import varrer
+
+        v = varrer(dados.sintetico(3500, seed=3, modo="ruido"), leitores_padrao(), Config(), [6, 12], meses_teste=1)
+        json.dumps(v)
+        self.assertEqual(v["horizontes"], [6, 12])
+        self.assertEqual(v["n_testes"], 2 * len(v["por_horizonte"][0]["completo"]))
+        self.assertAlmostEqual(v["alfa_corrigido"], 0.05 / v["n_testes"])
+        self.assertEqual(v["candidatos"], [])                                                # ruído: nada sobrevive
+        self.assertIn("NENHUM", v["veredito"][1])
+        self.assertIn("EXPLORAÇÃO", v["veredito"][2])
+
+    def test_candidato_so_sobrevive_com_p_corrigido_e_positivo_no_teste(self):
+        from mesa.varredura import varrer
+
+        # vantagem real (momentum) com custo baixo e horizonte curto: deve aparecer como nominal e passar na correção
+        v = varrer(dados.sintetico(9000, seed=2, modo="momentum"), leitores_padrao(), Config(taxa_bps=1, slippage_bps=0), [6, 12], meses_teste=3)
+        self.assertGreaterEqual(len(v["nominais"]), 1)
+        for c in v["candidatos"]:
+            self.assertLessEqual(c["p_valor"], v["alfa_corrigido"])
+            self.assertGreater(c["retorno_teste"], 0)
+        self.assertGreaterEqual(len(v["nominais"]), len(v["candidatos"]))
+
+    def test_servico_roda_a_varredura_sobre_o_historico_guardado(self):
+        import contextlib
+        import io
+        import os
+
+        from mesa import servico
+
+        v = dados.sintetico(3500, seed=2, modo="momentum")
+        with tempfile.TemporaryDirectory() as tmp:
+            pasta = Path(tmp)
+            self.assertFalse(servico.precisa_varredura(pasta))                               # sem histórico, nada a varrer
+            dados.salvar_csv(v, pasta / "historico.csv")
+            self.assertTrue(servico.precisa_varredura(pasta))
+            with contextlib.redirect_stdout(io.StringIO()) as log:
+                servico.rodar_varredura(pasta, Config(), lambda vv: (leitores_padrao(), []), [6, 12])
+            self.assertIn("[varredura] RESULTADO", log.getvalue())
+            self.assertIn("VARREDURA DE HORIZONTES", log.getvalue())
+            self.assertEqual(json.loads((pasta / "varredura.estado.json").read_text())["estado"], "pronto")
+            self.assertFalse(servico.precisa_varredura(pasta))                               # recém-feita
+            novo = (pasta / "historico.csv").stat().st_mtime + 10
+            os.utime(pasta / "historico.csv", (novo, novo))
+            self.assertTrue(servico.precisa_varredura(pasta))                                # histórico mais novo: refaz
+
+    def test_pagina_e_cli(self):
+        import contextlib
+        import io
+        import threading
+        import urllib.request
+        from http.cookiejar import CookieJar
+
+        from mesa import servico
+        from mesa.painel import servidor
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pasta = Path(tmp)
+            dados.salvar_csv(dados.sintetico(3000, seed=2), pasta / "historico.csv")
+            with contextlib.redirect_stdout(io.StringIO()):
+                servico.rodar_varredura(pasta, Config(), lambda vv: (leitores_padrao(), []), [6])
+            srv = servidor(tmp, "chave-de-teste-bem-longa-123", "127.0.0.1", 0)
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+            self.addCleanup(srv.server_close)
+            self.addCleanup(srv.shutdown)
+            c = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+            base = f"http://127.0.0.1:{srv.server_address[1]}"
+            c.open(f"{base}/?k=chave-de-teste-bem-longa-123", timeout=5).read()
+            d = json.loads(c.open(f"{base}/api/estado", timeout=5).read())
+            self.assertEqual(d["varredura"]["horizontes"], [6])
+            self.assertEqual(d["varredura_estado"]["estado"], "pronto")
+
+            csv, js = str(pasta / "h.csv"), str(pasta / "v.json")
+            dados.salvar_csv(dados.sintetico(2500, seed=4), csv)
+            saida = io.StringIO()
+            with contextlib.redirect_stdout(saida):
+                self.assertEqual(principal(["varrer", "--dados", csv, "--horizontes", "6,12", "--meses-teste", "1", "--json", js]), 0)
+            self.assertIn("VARREDURA DE HORIZONTES", saida.getvalue())
+            self.assertEqual(json.loads(Path(js).read_text())["horizontes"], [6, 12])

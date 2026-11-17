@@ -58,6 +58,10 @@ Sem dados reais à mão, `python -m mesa sintetico --modo ruido|momentum|regimes
 
 Cada leitor só recebe o passado. Os de fora (medo e ganância, funding) guardam **quando cada dado foi publicado** e nunca devolvem nada do futuro (há teste automático).
 
+## Varredura de horizontes (`mesa varrer`)
+
+Roda o mesmo backtest em vários horizontes (padrão: 4, 8, 12, 24, 48 e 96 horas) e **corrige pelo número de testes**: com N testes, o limite de significância passa de 0,05 para 0,05 ÷ N (correção de Bonferroni). Só é "candidato" quem passa nessa correção, tem ≥ 30 operações e também é positivo no período de teste. Os horizontes devem ser escolhidos **antes** de olhar os resultados. O servidor roda a varredura sozinha (sobre o histórico já baixado) e a mostra na página de status; `MESA_VARREDURA=0` desliga.
+
 ## Backtest automático no servidor
 
 O vigia, ao subir, **baixa sozinho 2 anos de histórico real** (Coinbase), roda o relatório (período completo + últimos 12 meses como teste, calibração, veredito) e mostra na página de status; **refaz toda semana**. Controles por variável de ambiente: `MESA_BACKTEST_DIAS` (padrão 730; `0` desliga), `MESA_MEDO` (`0` desliga o leitor de medo e ganância), `MESA_FUNDING` (`binance` ou `bybit`). Observação: servidores nos EUA (como o Railway em `iad`) costumam ser **bloqueados** pelas APIs de funding da Binance e da Bybit; nesse caso o relatório avisa e segue sem esse leitor.

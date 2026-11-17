@@ -14,6 +14,7 @@ from . import dados
 from .backtest import Config
 from .corretora import salvar_json
 from .relatorio import formatar, relatorio
+from .varredura import formatar as formatar_varredura, varrer
 
 IDADE_MAX_DIAS = 7
 
@@ -51,6 +52,28 @@ def rodar_uma_vez(pasta: Path | str, fonte: str, simbolo: str, intervalo: str, d
     return rel
 
 
+def precisa_varredura(pasta: Path, agora: float | None = None) -> bool:
+    """Há histórico baixado e a varredura não existe, é mais velha que o histórico ou passou de uma semana."""
+    hist, arq = pasta / "historico.csv", pasta / "varredura.json"
+    if not hist.exists():
+        return False
+    return not arq.exists() or arq.stat().st_mtime < hist.stat().st_mtime or (agora or time.time()) - arq.stat().st_mtime > IDADE_MAX_DIAS * 86400
+
+
+def rodar_varredura(pasta: Path | str, cfg: Config, leitores_fn: Callable[[list], tuple[list, list[str]]], horizontes: list[int] | None = None) -> dict:
+    """Varredura de horizontes sobre o histórico já baixado (historico.csv); grava varredura.json e imprime no log."""
+    pasta = Path(pasta)
+    velas = dados.ler_csv(pasta / "historico.csv")
+    salvar_json(pasta / "varredura.estado.json", {"estado": "calculando", "mensagem": f"varrendo horizontes em {len(velas)} velas…"})
+    print(f"[varredura] calculando: {len(velas)} velas…", flush=True)
+    lista, avisos = leitores_fn(velas)
+    v = varrer(velas, lista, cfg, horizontes, avisos=avisos, aoprogresso=lambda h: print(f"[varredura] horizonte {h} h pronto", flush=True))
+    salvar_json(pasta / "varredura.json", v)
+    salvar_json(pasta / "varredura.estado.json", {"estado": "pronto", "mensagem": "pronto"})
+    print("[varredura] RESULTADO\n" + formatar_varredura(v), flush=True)
+    return v
+
+
 def mostrar_existente(pasta: Path) -> bool:
     """Ao subir, imprime no log o último relatório guardado (se houver): assim o resultado fica consultável sem abrir a página."""
     arq = pasta / "backtest.json"
@@ -80,6 +103,12 @@ def iniciar_em_segundo_plano(pasta, fonte, simbolo, intervalo, dias, cfg, leitor
                 except Exception as erro:  # noqa: BLE001 — erro de rede/API não derruba o vigia; tenta de novo na próxima hora
                     _estado(pasta, "erro", f"{type(erro).__name__}: {erro}")
                     print(f"[backtest] erro: {erro}\n{traceback.format_exc(limit=2)}", flush=True)
+            if os.environ.get("MESA_VARREDURA", "1") == "1" and precisa_varredura(pasta):
+                try:
+                    rodar_varredura(pasta, cfg, leitores_fn)
+                except Exception as erro:  # noqa: BLE001
+                    salvar_json(pasta / "varredura.estado.json", {"estado": "erro", "mensagem": f"{type(erro).__name__}: {erro}"})
+                    print(f"[varredura] erro: {erro}\n{traceback.format_exc(limit=2)}", flush=True)
             dormir(espera_s)
 
     t = threading.Thread(target=laco, daemon=True, name="backtest-automatico")
