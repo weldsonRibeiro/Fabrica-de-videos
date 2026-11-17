@@ -90,3 +90,38 @@ def relatorio(velas: list[Vela], leitores: list[Leitor], cfg: Config | None = No
                     "buy_hold": [100 * uniformes[prep.inicio + i].c / bh0 for i in range(0, len(base.equity), passo_amostra)]},
         "avisos": avisos or [],
     }
+
+
+def tabela(resumos: list[dict]) -> str:
+    linhas = [f"{'estratégia':28}{'retorno':>9}{'buy&hold':>10}{'sharpe':>8}{'queda máx':>10}{'ops':>6}  {'IC95% por operação':24} veredito"]
+    for x in resumos:
+        lo, hi = x["ic95"]
+        ic = "—" if lo is None else f"[{lo:+.2%} , {hi:+.2%}]"
+        ver = "evidência de vantagem*" if x["significativo"] else ("poucas operações" if x["operacoes"] < 30 else "sem evidência")
+        if x.get("desligado"):
+            ver += " | " + x["desligado"]
+        linhas.append(f"{x['nome']:28}{x['retorno']:>+9.1%}{x['buy_hold']:>+10.1%}{x['sharpe']:>8.2f}{x['max_dd']:>10.1%}{x['operacoes']:>6}  {ic:24} {ver}")
+    return "\n".join(linhas)
+
+
+def formatar(rel: dict) -> str:
+    """O relatório em texto (a linha de comando imprime; o servidor grava no log)."""
+    pr, c = rel["periodo"], rel["config"]
+    out = [f"{pr['velas']} velas ({pr['de']} → {pr['ate']}) · horizonte {c['horizonte']} · custo {c['taxa_bps'] + c['slippage_bps']:.0f} bps por lado · leitores: {', '.join(c['leitores'])}"]
+    if pr["lacunas_preenchidas"]:
+        out.append(f"(aviso: {pr['lacunas_preenchidas']} velas faltavam no histórico e foram repetidas do fechamento anterior)")
+    out.append("\n== PERÍODO COMPLETO ==\n" + tabela(rel["completo"]))
+    out.append(f"\n== TESTE: ÚLTIMOS {rel['meses_teste']} MESES (desde {pr['teste_final_a_partir_de']}) ==\n" + tabela(rel["teste"]))
+    out.append("\n* IC 95% de retorno por operação acima de zero com ≥ 30 operações. É evidência, NÃO prova: confirme com dados que o")
+    out.append("  modelo nunca viu e em paper trading antes de qualquer dinheiro.")
+    out.append(f"  Foram comparadas {len(rel['completo'])} estratégias: com 95% de confiança, ~1 em 20 aparece 'com evidência' só por sorte.")
+    cal = rel["calibracao"]
+    if cal.get("n"):
+        out.append(f"\nCalibração das probabilidades do agregador ({cal['n']} previsões fora da amostra): Brier {cal['brier']:.4f} "
+                   f"(chutar 50% = 0,2500) · log-loss {cal['logloss']:.4f} (50% = 0,6931) · acerto {cal['acuracia']:.1%}")
+        for b in cal["tabela"]:
+            out.append(f"  quando diz {b['faixa']:>8}: subiu {b['freq_real']:.0%} das vezes (média prevista {b['prob_media']:.0%}, n={b['n']})")
+    out.append("\nVEREDITO:")
+    out += ["  • " + l for l in rel["veredito"]]
+    out += ["  ! " + a for a in rel.get("avisos", [])]
+    return "\n".join(out)

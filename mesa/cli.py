@@ -13,7 +13,7 @@ from .backtest import Config
 from . import leitores
 from .leitores import leitores_padrao
 from .risco import ConfigRisco
-from .relatorio import relatorio
+from .relatorio import formatar, relatorio
 from .sinal import avaliar, gerar_sinal, registrar
 
 AVISO = ("⚠️  Simulação. Passado não garante futuro; backtest tende a ser otimista. Não é recomendação financeira "
@@ -23,41 +23,6 @@ AVISO = ("⚠️  Simulação. Passado não garante futuro; backtest tende a ser
 def _cfg(a) -> Config:
     return Config(horizonte=a.horizonte, taxa_bps=a.taxa, slippage_bps=a.slippage, capital=a.capital,
                   risco=ConfigRisco(permitir_short=a.short))
-
-
-def _tabela(resumos: list[dict]) -> str:
-    linhas = [f"{'estratégia':28}{'retorno':>9}{'buy&hold':>10}{'sharpe':>8}{'queda máx':>10}{'ops':>6}  {'IC95% por operação':24} veredito"]
-    for r in resumos:
-        lo, hi = r["ic95"]
-        ic = "—" if lo is None else f"[{lo:+.2%} , {hi:+.2%}]"
-        ver = "evidência de vantagem*" if r["significativo"] else ("poucas operações" if r["operacoes"] < 30 else "sem evidência")
-        if r.get("desligado"):
-            ver += " | " + r["desligado"]
-        linhas.append(f"{r['nome']:28}{r['retorno']:>+9.1%}{r['buy_hold']:>+10.1%}{r['sharpe']:>8.2f}{r['max_dd']:>10.1%}{r['operacoes']:>6}  {ic:24} {ver}")
-    return "\n".join(linhas)
-
-
-def imprimir_relatorio(rel: dict) -> None:
-    pr, c = rel["periodo"], rel["config"]
-    print(f"{pr['velas']} velas ({pr['de']} → {pr['ate']}) · horizonte {c['horizonte']} · custo {c['taxa_bps'] + c['slippage_bps']:.0f} bps por lado · leitores: {', '.join(c['leitores'])}")
-    if pr["lacunas_preenchidas"]:
-        print(f"(aviso: {pr['lacunas_preenchidas']} velas faltavam no histórico e foram repetidas do fechamento anterior)")
-    print("\n== PERÍODO COMPLETO ==\n" + _tabela(rel["completo"]))
-    print(f"\n== TESTE: ÚLTIMOS {rel['meses_teste']} MESES (desde {pr['teste_final_a_partir_de']}) ==\n" + _tabela(rel["teste"]))
-    print("\n* IC 95% de retorno por operação acima de zero com ≥ 30 operações. É evidência, NÃO prova: confirme com dados que o")
-    print("  modelo nunca viu e em paper trading antes de qualquer dinheiro.")
-    print(f"  Foram comparadas {len(rel['completo'])} estratégias: com 95% de confiança, ~1 em 20 aparece 'com evidência' só por sorte.")
-    cal = rel["calibracao"]
-    if cal.get("n"):
-        print(f"\nCalibração das probabilidades do agregador ({cal['n']} previsões fora da amostra): Brier {cal['brier']:.4f} "
-              f"(chutar 50% = 0,2500) · log-loss {cal['logloss']:.4f} (50% = 0,6931) · acerto {cal['acuracia']:.1%}")
-        for b in cal["tabela"]:
-            print(f"  quando diz {b['faixa']:>8}: subiu {b['freq_real']:.0%} das vezes (média prevista {b['prob_media']:.0%}, n={b['n']})")
-    print("\nVEREDITO:")
-    for l in rel["veredito"]:
-        print("  • " + l)
-    for a in rel.get("avisos", []):
-        print("  ! " + a)
 
 
 def montar_leitores(args, velas=None, com_atualizadores: bool = False):
@@ -239,7 +204,7 @@ def principal(argv: list[str] | None = None) -> int:
     if a.cmd == "backtest":
         lista, avisos = montar_leitores(a, velas)
         rel = relatorio(velas, lista, cfg, meses_teste=a.meses_teste, fonte=a.dados, avisos=avisos)
-        imprimir_relatorio(rel)
+        print(formatar(rel))
         if a.json:
             Path(a.json).write_text(json.dumps(rel, ensure_ascii=False, indent=2), encoding="utf-8")
             print(f"\nrelatório completo em {a.json}")
