@@ -475,3 +475,231 @@ class TestPaginaDaMesa(unittest.TestCase):
             self.assertIn(f"ARGS:-m mesa vigiar --servir --fonte coinbase --pasta {tmp}/mesa", rodar({"FABRICA_MODO": "mesa"}))
             self.assertIn("ARGS:-m mesa vigiar --servir --fonte binance", rodar({"FABRICA_MODO": "mesa", "MESA_FONTE": "binance"}))
             self.assertIn("ARGS:-m fabrica painel --com-maestro", rodar({}))              # sem FABRICA_MODO volta à fábrica
+
+
+class TestHistoricoEExternos(unittest.TestCase):
+    def test_coinbase_historico_em_janelas_sem_buracos_e_sem_vela_aberta(self):
+        agora = 1_700_000_000
+        agora -= agora % 3600
+        urls = []
+
+        def transporte(url):
+            urls.append(url)
+            from datetime import datetime, timezone
+
+            a = datetime.strptime(url.split("start=")[1].split("&")[0], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
+            b = datetime.strptime(url.split("end=")[1], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
+            return json.dumps([[int(t), 99.0, 101.0, 100.0, 100.5, 5] for t in range(int(b) - 3600, int(a) - 1, -3600)]).encode()
+
+        progresso = []
+        velas = dados.baixar_coinbase("BTC-USD", "1h", agora - 700 * 3600, agora, transporte, dormir=lambda s: None, progresso=progresso.append)
+        self.assertEqual(len(velas), 700)
+        self.assertEqual(len(urls), 3)                                                    # 300 + 300 + 100
+        self.assertEqual([b.t - a.t for a, b in zip(velas, velas[1:])], [3600] * 699)     # sem buracos nem repetidas
+        self.assertEqual(progresso[-1], 700)
+
+    def test_lacunas_sao_contadas_e_preenchidas(self):
+        v = dados.sintetico(10, seed=1)
+        furado = v[:3] + v[6:]
+        self.assertEqual(dados.contar_lacunas(furado), 3)
+        cheio = dados.preencher_lacunas(furado)
+        self.assertEqual((len(cheio), dados.contar_lacunas(cheio)), (10, 0))
+        self.assertEqual((cheio[3].o, cheio[3].v), (v[2].c, 0.0))                          # repete o último fechamento, sem volume
+
+    def test_serie_nunca_devolve_o_futuro(self):
+        from mesa.externos import Serie
+
+        s = Serie([(100, 1), (200, 2), (300, 3)])
+        self.assertEqual(s.ate(250, 5), [(100, 1.0), (200, 2.0)])
+        self.assertEqual(s.ate(99), [])
+        s.adicionar([(200, 9)])                                                           # reenvio do mesmo instante substitui
+        self.assertEqual(s.ate(250, 1), [(200, 9.0)])
+
+    def test_medo_e_ganancia_com_24h_de_cautela(self):
+        from mesa.externos import baixar_medo
+
+        corpo = json.dumps({"data": [{"value": "20", "timestamp": "1000000"}, {"value": "80", "timestamp": "913600"}]}).encode()
+        s = baixar_medo(lambda url: corpo)
+        self.assertEqual(s.ate(1_000_000 + 86399), [(913600 + 86400, 80.0)])              # o valor de 1000000 ainda não conta
+        self.assertEqual(s.ate(1_000_000 + 86400)[-1], (1_000_000 + 86400, 20.0))
+
+    def test_funding_binance_e_bybit_paginam(self):
+        from mesa.externos import baixar_funding_bybit, baixar_funding_binance
+
+        chamadas = []
+
+        def binance(url):
+            chamadas.append(url)
+            n = 1000 if len(chamadas) == 1 else 3
+            base = 1_600_000_000 + (len(chamadas) - 1) * 1000 * 28800
+            return json.dumps([{"fundingTime": (base + i * 28800) * 1000, "fundingRate": "0.0001"} for i in range(n)]).encode()
+
+        self.assertEqual((len(baixar_funding_binance(desde=1_600_000_000, transporte=binance)), len(chamadas)), (1003, 2))
+
+        def bybit(url):
+            fim = int(url.split("endTime=")[1])
+            itens = [{"fundingRateTimestamp": str(t), "fundingRate": "0.0002"} for t in range(fim - 1000, fim - 1000 - 200 * 8 * 3_600_000, -8 * 3_600_000)]
+            return json.dumps({"result": {"list": itens[:200] if fim > 10 ** 12 else itens[:50]}}).encode()
+
+        s = baixar_funding_bybit(desde=1_600_000_000, ate=1_700_000_000, transporte=bybit)
+        self.assertGreater(len(s), 0)
+        self.assertTrue(all(t >= 1_600_000_000 for t in s.t))
+
+    def test_leitores_externos_nao_veem_o_futuro_e_inclinam_para_o_lado_certo(self):
+        from mesa.externos import Serie
+        from mesa.leitores import Funding, MedoGanancia
+
+        velas = dados.sintetico(10, seed=1)
+        agora = velas[-1].t + 3600
+        medo = MedoGanancia(Serie([(agora - 10, 10.0), (agora + 5, 95.0)]))                # medo extremo agora; ganância só no futuro
+        l = medo.ler(velas)
+        self.assertGreater(l.p, 0.5)
+        self.assertGreater(l.conf, 0.5)
+        self.assertLess(MedoGanancia(Serie([(agora - 10, 95.0)])).ler(velas).p, 0.5)
+        self.assertEqual(MedoGanancia(Serie()).ler(velas).conf, 0.0)
+        pts = [(agora - 3600 * 8 * (40 - i), 0.0001 + (i % 3) * 1e-6) for i in range(40)]
+        calmo = Funding(Serie(pts)).ler(velas)
+        lotado = Funding(Serie(pts[:-1] + [(agora - 5, 0.01)])).ler(velas)                 # funding disparado: compradores lotando
+        self.assertLess(lotado.p, 0.5)
+        self.assertGreater(lotado.conf, calmo.conf)
+        futuro = Funding(Serie(pts + [(agora + 99, 5.0)])).ler(velas)
+        self.assertEqual((futuro.p, futuro.conf), (calmo.p, calmo.conf))                    # o ponto do futuro foi ignorado
+
+
+class TestRelatorioEServico(unittest.TestCase):
+    def velas(self):
+        return dados.sintetico(3500, seed=2, modo="momentum")
+
+    def test_relatorio_tem_tudo_e_vira_json(self):
+        from mesa.relatorio import relatorio
+
+        rel = relatorio(self.velas(), leitores_padrao(), Config(horizonte=6, taxa_bps=1, slippage_bps=0), meses_teste=1)
+        json.dumps(rel)
+        self.assertEqual(rel["periodo"]["lacunas_preenchidas"], 0)
+        self.assertEqual(len(rel["completo"]), len(rel["teste"]))
+        self.assertTrue(rel["veredito"] and rel["calibracao"]["n"] > 0)
+        completo, teste = rel["completo"][0], rel["teste"][0]
+        self.assertNotEqual(completo["retorno"], teste["retorno"])                         # o recorte é outro período
+        self.assertLessEqual(teste["operacoes"], completo["operacoes"])
+
+    def test_relatorio_tolera_historico_com_buracos(self):
+        from mesa.relatorio import relatorio
+
+        v = self.velas()
+        furado = v[:1000] + v[1010:]
+        rel = relatorio(furado, leitores_padrao(), Config(horizonte=6), meses_teste=1)
+        self.assertEqual(rel["periodo"]["lacunas_preenchidas"], 10)
+
+    def test_servico_baixa_calcula_e_guarda_so_quando_precisa(self):
+        from mesa import servico
+
+        v = self.velas()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(dados, "baixar_coinbase", return_value=v) as baixar:
+            pasta = Path(tmp)
+            self.assertTrue(servico.precisa_rodar(pasta))
+            servico.rodar_uma_vez(pasta, "coinbase", "BTC-USD", "1h", 120, Config(horizonte=6), lambda velas: (leitores_padrao(), ["aviso de teste"]))
+            baixar.assert_called_once()
+            self.assertEqual(json.loads((pasta / "backtest.estado.json").read_text())["estado"], "pronto")
+            self.assertEqual(json.loads((pasta / "backtest.json").read_text())["avisos"], ["aviso de teste"])
+            self.assertTrue((pasta / "historico.csv").exists())
+            self.assertFalse(servico.precisa_rodar(pasta))                                  # recém-feito
+            import os
+
+            velho = (pasta / "backtest.json").stat().st_mtime - 8 * 86400
+            os.utime(pasta / "backtest.json", (velho, velho))
+            self.assertTrue(servico.precisa_rodar(pasta))                                   # passou de uma semana: refaz
+
+    def test_servico_em_segundo_plano_registra_erro_e_nao_morre(self):
+        from mesa import servico
+
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(dados, "baixar_coinbase", side_effect=OSError("sem rede")):
+            ciclos = {"n": 0}
+
+            def dormir(s):
+                ciclos["n"] += 1
+
+            t = servico.iniciar_em_segundo_plano(tmp, "coinbase", "BTC-USD", "1h", 30, Config(), lambda v: (leitores_padrao(), []),
+                                                 espera_s=0, dormir=dormir, parar=lambda: ciclos["n"] >= 2)
+            t.join(5)
+            est = json.loads((Path(tmp) / "backtest.estado.json").read_text())
+            self.assertEqual(est["estado"], "erro")
+            self.assertIn("sem rede", est["mensagem"])
+            self.assertGreaterEqual(ciclos["n"], 2)                                          # tentou de novo em vez de morrer
+
+    def test_pagina_traz_o_backtest_e_o_estado_dele(self):
+        import threading
+        import urllib.request
+        from http.cookiejar import CookieJar
+
+        from mesa import servico
+        from mesa.painel import servidor
+
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(dados, "baixar_coinbase", return_value=self.velas()):
+            servico.rodar_uma_vez(tmp, "coinbase", "BTC-USD", "1h", 60, Config(horizonte=6), lambda v: (leitores_padrao(), []))
+            srv = servidor(tmp, "chave-de-teste-bem-longa-123", "127.0.0.1", 0)
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+            self.addCleanup(srv.server_close)
+            self.addCleanup(srv.shutdown)
+            c = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+            base = f"http://127.0.0.1:{srv.server_address[1]}"
+            c.open(f"{base}/?k=chave-de-teste-bem-longa-123", timeout=5).read()
+            d = json.loads(c.open(f"{base}/api/estado", timeout=5).read())
+            self.assertEqual(d["backtest_estado"]["estado"], "pronto")
+            self.assertEqual(len(d["backtest"]["completo"]), len(d["backtest"]["teste"]))
+            self.assertIn("grafico", d["backtest"])
+
+
+class TestCliExtras(unittest.TestCase):
+    def test_extras_que_falham_viram_aviso_e_nao_derrubam(self):
+        import argparse
+
+        from mesa import externos
+        from mesa.cli import montar_leitores
+
+        a = argparse.Namespace(medo=True, funding="binance")
+        with mock.patch.object(externos, "baixar_medo", side_effect=OSError("bloqueado")), \
+                mock.patch.dict(externos.FUNDING, {"binance": mock.Mock(side_effect=OSError("HTTP 451"))}):
+            lista, avisos = montar_leitores(a, dados.sintetico(50, seed=1))
+        self.assertEqual(len(lista), len(leitores_padrao()))                                # segue só com os leitores padrão
+        self.assertEqual(len(avisos), 2)
+        self.assertIn("bloqueado", avisos[0])
+        self.assertIn("451", avisos[1])
+
+    def test_leitores_extras_entram_quando_os_dados_chegam(self):
+        import argparse
+
+        from mesa import externos
+        from mesa.cli import montar_leitores
+
+        with mock.patch.object(externos, "baixar_medo", return_value=externos.Serie([(1, 40.0)])):
+            lista, avisos, atual = montar_leitores(argparse.Namespace(medo=True, funding=None), None, com_atualizadores=True)
+        self.assertEqual(lista[-1].nome, "medo e ganância")
+        self.assertEqual((avisos, len(atual)), ([], 1))
+
+    def test_backtest_cli_salva_json_e_baixar_usa_a_coinbase(self):
+        import contextlib
+        import io
+
+        with tempfile.TemporaryDirectory() as tmp:
+            csv, js = str(Path(tmp) / "h.csv"), str(Path(tmp) / "r.json")
+            with mock.patch.object(dados, "baixar_coinbase", return_value=dados.sintetico(900, seed=2)) as m, contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(principal(["baixar", "--desde", "2022-01-01", "--saida", csv]), 0)
+            self.assertEqual(m.call_args.args[0], "BTC-USD")
+            saida = io.StringIO()
+            with contextlib.redirect_stdout(saida):
+                self.assertEqual(principal(["backtest", "--dados", csv, "--horizonte", "6", "--meses-teste", "1", "--json", js]), 0)
+            self.assertIn("TESTE: ÚLTIMOS 1 MESES", saida.getvalue())
+            self.assertIn("VEREDITO", saida.getvalue())
+            self.assertIn("completo", json.loads(Path(js).read_text()))
+
+    def test_vigia_segue_quando_um_dado_externo_falha(self):
+        from mesa.vigia import Vigia
+
+        with tempfile.TemporaryDirectory() as tmp:
+            velas = dados.sintetico(900, seed=4)
+            f = FonteFalsa(velas)
+            f.agora = velas[-1].t + 3600
+            v = Vigia(f, leitores_padrao(), Config(agregador="media"), tmp, atualizadores=[lambda: (_ for _ in ()).throw(OSError("API fora"))])
+            eventos = v.passo(f.agora)
+            self.assertTrue(any("API fora" in e for e in eventos))
+            self.assertTrue((Path(tmp) / "estado.json").exists())

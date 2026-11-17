@@ -167,7 +167,10 @@ def caixa_antes(caixa: float, pos: dict) -> float:
 def comparar(velas: list[Vela], leitores: list[Leitor], cfg: Config | None = None) -> list[Resultado]:
     """A estratégia completa contra as linhas de base: média simples e cada leitor sozinho."""
     cfg = cfg or Config()
-    prep = preparar(velas, leitores, cfg.horizonte)
+    return comparar_prep(preparar(velas, leitores, cfg.horizonte), leitores, cfg)
+
+
+def comparar_prep(prep: Preparado, leitores: list[Leitor], cfg: Config) -> list[Resultado]:
     from dataclasses import replace
 
     saidas = [rodar(prep, replace(cfg, agregador="logistico", usar=None), "agentes + logístico"),

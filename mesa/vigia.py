@@ -24,8 +24,10 @@ HISTORICO_MAX = 5000      # velas mantidas (≈ 7 meses de velas de 1 h): limita
 
 
 class Vigia:
-    def __init__(self, fonte: Fonte, leitores: list[Leitor], cfg: Config, pasta: Path | str, corretora: CorretoraSimulada | None = None):
+    def __init__(self, fonte: Fonte, leitores: list[Leitor], cfg: Config, pasta: Path | str, corretora: CorretoraSimulada | None = None,
+                 atualizadores: list[Callable[[], None]] | None = None):
         self.fonte, self.leitores, self.cfg = fonte, leitores, cfg
+        self.atualizadores = atualizadores or []
         self.pasta = Path(pasta)
         self.pasta.mkdir(parents=True, exist_ok=True)
         self.corretora = corretora or CorretoraSimulada(cfg.capital, cfg.taxa_bps, cfg.slippage_bps)
@@ -88,6 +90,11 @@ class Vigia:
 
         ultima = self.velas[-1] if self.velas else None
         if ultima and ultima.t > self.ultimo_sinal_t:               # vela nova fechada: hora de pensar
+            for atualizar in self.atualizadores:                    # séries de fora (medo e ganância, funding): falha não derruba
+                try:
+                    atualizar()
+                except Exception as erro:  # noqa: BLE001
+                    eventos.append(self._evento(agora, f"aviso: não consegui atualizar um dado externo ({erro})"))
             s = gerar_sinal(self.velas, self.leitores, self.cfg)
             registrar(self.pasta / "diario.jsonl", s)
             self.ultimo_sinal_t = ultima.t

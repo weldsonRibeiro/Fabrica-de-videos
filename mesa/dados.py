@@ -5,6 +5,7 @@ import csv
 import json
 import math
 import random
+import time
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -107,3 +108,53 @@ def baixar_binance(simbolo: str = "BTCUSDT", intervalo: str = "1h", desde: int =
             break
         inicio_ms = (velas[-1].t + passo) * 1000
     return velas
+
+
+def baixar_coinbase(produto: str = "BTC-USD", intervalo: str = "1h", desde: int = 0, ate: int | None = None,
+                    transporte: Transporte = _http, base: str = "https://api.exchange.coinbase.com",
+                    dormir: Callable[[float], None] = time.sleep, progresso: Callable[[int], None] | None = None) -> list[Vela]:
+    """Histórico público da Coinbase (sem chave; funciona de IPs dos EUA). 300 velas por pedido, com pausa entre eles."""
+    from datetime import datetime, timezone
+
+    passo = INTERVALOS[intervalo]
+    if intervalo not in ("1m", "5m", "15m", "1h", "1d"):
+        raise ValueError("a Coinbase aceita 1m, 5m, 15m, 1h e 1d")
+    agora = int(time.time())
+    ate = min(ate, agora) if ate else agora
+    iso = lambda t: datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")  # noqa: E731
+    por_t: dict[int, Vela] = {}
+    ini = (max(desde, 0) // passo) * passo
+    while ini < ate:
+        fim = min(ini + 300 * passo, ate)
+        lote = json.loads(transporte(f"{base}/products/{produto}/candles?granularity={passo}&start={iso(ini)}&end={iso(fim)}"))
+        for t, baixo, alto, abre, fecha, vol in lote:            # formato da Coinbase: [t, low, high, open, close, volume]
+            por_t[int(t)] = Vela(int(t), float(abre), float(alto), float(baixo), float(fecha), float(vol))
+        ini = fim
+        if progresso:
+            progresso(len(por_t))
+        dormir(0.12)                                             # a API pública limita a ~10 pedidos por segundo
+    return sorted((v for v in por_t.values() if v.t + passo <= ate), key=lambda v: v.t)
+
+
+def contar_lacunas(velas: list[Vela]) -> int:
+    """Quantas velas faltam no meio da série (a Coinbase omite velas sem negócio)."""
+    if len(velas) < 2:
+        return 0
+    passo = min(b.t - a.t for a, b in zip(velas, velas[1:]))
+    return sum((b.t - a.t) // passo - 1 for a, b in zip(velas, velas[1:]) if b.t - a.t > passo)
+
+
+def preencher_lacunas(velas: list[Vela]) -> list[Vela]:
+    """Mantém o espaçamento uniforme (os leitores contam velas = horas): onde faltou, repete o último fechamento, volume 0."""
+    if len(velas) < 2:
+        return velas
+    passo = min(b.t - a.t for a, b in zip(velas, velas[1:]))
+    saida = [velas[0]]
+    for v in velas[1:]:
+        t = saida[-1].t + passo
+        while t < v.t:
+            c = saida[-1].c
+            saida.append(Vela(t, c, c, c, c, 0.0))
+            t += passo
+        saida.append(v)
+    return saida
