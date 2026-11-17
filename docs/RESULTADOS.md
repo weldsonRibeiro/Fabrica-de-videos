@@ -4,6 +4,8 @@
 
 ## Conclusão (17/11/2026)
 
+**Atualização:** a hipótese H1 (funding) foi **REPROVADA** no mesmo dia, e uma replicação independente no computador do usuário chegou à mesma conclusão (seções abaixo).
+
 **Com indicadores de preço e volume públicos, no Bitcoin de 1 hora, não há evidência de vantagem.** Em 42 testes (6 horizontes × 7 estratégias) com os custos reais de uma corretora comum, **nenhum** sobreviveu à correção pelo número de testes. As probabilidades dos agentes não são melhores que chutar 50%. Os resultados negativos vêm dos custos: a vantagem bruta é praticamente zero.
 
 ## O que foi testado
@@ -37,6 +39,32 @@
 
 **Varredura de horizontes (4, 8, 12, 24, 48 e 96 h):** 42 testes; limite corrigido (Bonferroni) p ≤ 0,0012; por sorte esperariam-se ~2,1 positivos, apareceram **0**. Retorno de agentes + logística / média simples entre −6,0% e ≈ 0 em todos os horizontes; nenhum intervalo de confiança inteiro acima de zero; Brier entre 0,2498 e 0,2559; acerto entre 48,1% e 51,4%. No horizonte de 4 h o sistema quase não opera (0 a 13 operações), porque os 0,30% de custo comem o valor esperado.
 
+## Replicação independente (computador do usuário, 17/11/2026)
+
+Mesmo código, dados baixados de novo: Coinbase BTC-USD 1 h, **01/11/2024 → 17/11/2026** (17.904 velas), horizonte 24 h, custo de 0,15% por lado, sem os leitores extras. Comprar e segurar: −9,6% (o valor difere do servidor, −33,9%, só porque a data de início é outra).
+
+| Estratégia | Retorno | Operações | IC 95% por operação | Últimos 12 meses |
+|---|---|---|---|---|
+| agentes + logística | −6,3% | 59 | [−0,18% ; −0,04%] | −1,4% (8 ops) |
+| agentes + média simples | −2,7% | 54 | [−0,11% ; +0,01%] | −1,3% (27 ops) |
+| só tendência | +0,2% | 29 | poucas operações | +0,3% (10 ops) |
+| só momentum | −9,1% | 243 | [−0,08% ; +0,00%] | −7,2% (110 ops) |
+| só reversão à média | −20,2% (kill switch) | 217 | [−0,17% ; −0,03%] | −3,5% (32 ops) |
+| só fluxo e volume | −13,1% | 254 | [−0,09% ; −0,02%] | −5,3% (110 ops) |
+
+Calibração (17.247 previsões fora da amostra): Brier **0,2524** (chutar 50% = 0,2500), log-loss 0,6979, acerto 48,9%. Quando o agregador dizia 60–70%, o preço subiu **25%** das vezes (n = 225): excesso de confiança, sem relação com o que acontece. **Mesma conclusão do servidor: sem evidência de vantagem.**
+
+## H1 — funding: resultado (REPROVADA)
+
+Dados: 17.904 velas (01/11/2024 → 17/11/2026) e 2.330 pontos de funding (Bybit). Protocolo fixo (24 h, custo 0,15% por lado, 2 testes, p ≤ 0,025). Referência: agentes sem funding −6,3% (Brier 0,2524); comprar e segurar −9,6%.
+
+| Teste | Retorno (1ª / 2ª metade) | Operações | p | IC 95% por operação | Brier |
+|---|---|---|---|---|---|
+| só funding | −6,0% (−0,9% / −5,1%) | 142 | 0,901 | [−0,11% ; +0,03%] | 0,2588 |
+| agentes + funding | −5,3% (−4,0% / −1,3%) | 66 | 0,995 | [−0,14% ; −0,02%] | 0,2526 |
+
+Falharam o limite de p, o retorno positivo e (no combinado) a melhora do Brier (0,2526 contra 0,2524 sem funding: nenhuma melhora). **Hipótese encerrada**, conforme o protocolo: sem ajustar nem repetir com outros números.
+
 ## Como interpretar
 
 - Os leitores não têm vantagem bruta; os custos transformam esse zero em prejuízo. Momentum e fluxo/volume têm retorno líquido por operação significativamente **negativo**, não porque "funcionem ao contrário", mas porque pagam custo sem ganhar nada.
@@ -65,8 +93,10 @@ Protocolo **travado no código** (`mesa/hipotese.py`; a linha de comando **não 
 
 Como rodar: `docs/MESA_COMPUTADOR.md`, "Hipótese H1".
 
+**Resultado (17/11/2026): REPROVADA.** Ver a seção acima.
+
 ### 3. Encerramento
-Se H1 reprovar **e** o paper trading não confirmar nada em 8 semanas, **encerra-se a pesquisa de sinais no Bitcoin com indicadores públicos**. É um resultado útil: evita perder dinheiro com uma ilusão.
+H1 reprovou. Falta só a condição do paper trading: se ele **não confirmar nada** (critério acima), **encerra-se a pesquisa de sinais no Bitcoin com indicadores públicos**. É um resultado útil: evita perder dinheiro com uma ilusão.
 
 ## Regras para não se enganar (valem daqui para frente)
 

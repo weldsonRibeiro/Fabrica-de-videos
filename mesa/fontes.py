@@ -59,6 +59,11 @@ class FonteCoinbase:
     def preco(self) -> float:
         return float(json.loads(self._http(f"{self.base}/products/{self.produto}/ticker"))["price"])
 
+    def livro(self) -> tuple[float, float, float, float]:
+        """(melhor compra, melhor venda, qtd compra, qtd venda). A Coinbase não informa as quantidades no ticker: 0."""
+        d = json.loads(self._http(f"{self.base}/products/{self.produto}/ticker"))
+        return float(d["bid"]), float(d["ask"]), 0.0, 0.0
+
 
 class FonteBinance:
     def __init__(self, simbolo: str = "BTCUSDT", intervalo: str = "1h", transporte: Transporte = _http, base: str = "https://api.binance.com"):
@@ -72,6 +77,10 @@ class FonteBinance:
 
     def preco(self) -> float:
         return float(json.loads(self._http(f"{self.base}/api/v3/ticker/price?symbol={self.simbolo}"))["price"])
+
+    def livro(self) -> tuple[float, float, float, float]:
+        d = json.loads(self._http(f"{self.base}/api/v3/ticker/bookTicker?symbol={self.simbolo}"))
+        return float(d["bidPrice"]), float(d["askPrice"]), float(d["bidQty"]), float(d["askQty"])
 
 
 FONTES = {"coinbase": FonteCoinbase, "binance": FonteBinance}

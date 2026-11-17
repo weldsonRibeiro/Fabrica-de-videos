@@ -960,3 +960,142 @@ class TestLeitorUnicoComJanelaCurta(unittest.TestCase):
         self.assertGreaterEqual(prep.inicio, 50)
         r = rodar(prep, Config(horizonte=6, agregador="media"))
         self.assertEqual(r.trades, [])                                                    # sem opinião, sem operações
+
+
+class TestCurtoPrazo(unittest.TestCase):
+    def test_trades_registram_ganho_bruto_e_horizonte_reaproveita_leituras(self):
+        velas = dados.sintetico(2500, seed=5, modo="momentum")
+        prep = preparar(velas, leitores_padrao(), 12)
+        r = rodar(prep, Config(horizonte=12, agregador="media", taxa_bps=0, slippage_bps=0))
+        self.assertTrue(r.trades)
+        for t in r.trades:
+            self.assertIn("bruto", t)
+            self.assertAlmostEqual(t["bruto"], t["ret_capital"] / t["fracao"], places=6)      # sem custo, o bruto é o retorno da posição
+        outro = backtest.com_horizonte(prep, 30)
+        self.assertEqual((outro.horizonte, outro.X is prep.X), (30, True))                     # leituras reaproveitadas
+        i = next(iter(outro.y))
+        self.assertEqual(outro.y[i], int(velas[i + 30].c > velas[i + 1].o))
+
+    def test_h2_em_ruido_reprova_e_calcula_equilibrio_e_sensibilidade(self):
+        from mesa.curto import PROTOCOLO_H2, avaliar_curto, formatar
+
+        velas = dados.sintetico(8000, seed=3, modo="ruido", passo=60)
+        v = avaliar_curto(velas, taxa_bps=7.5, min_velas=5000)
+        self.assertEqual(len(v["testes"]), PROTOCOLO_H2["n_testes"])
+        self.assertFalse(v["aprovado"])
+        self.assertIn("REPROVADA", v["veredito"])
+        for t in v["testes"]:
+            self.assertAlmostEqual(t["equilibrio_bps_por_lado"], t["bruto_medio_bps"] / 2)
+            self.assertAlmostEqual(t["sensibilidade"]["0"], t["bruto_medio_bps"])               # sem custo, sobra o bruto
+            self.assertAlmostEqual(t["sensibilidade"]["10"], t["bruto_medio_bps"] - 2 * 11.0)   # 10 de taxa + 1 de derrapagem, por lado, ida e volta
+            self.assertGreaterEqual(t["ops_por_dia"], 0)
+        texto = formatar(v)
+        self.assertIn("equilíbrio", texto)
+        self.assertIn("VEREDITO", texto)
+
+    def test_h2_recusa_dados_errados(self):
+        from mesa.curto import avaliar_curto
+
+        with self.assertRaises(ValueError):
+            avaliar_curto(dados.sintetico(2000, seed=1), min_velas=100)                          # velas de 1 h
+        with self.assertRaises(ValueError):
+            avaliar_curto(dados.sintetico(2000, seed=1, passo=60))                               # 1 min, mas poucos dados
+
+    def test_livro_binance_e_coinbase(self):
+        from mesa.fontes import FonteBinance, FonteCoinbase
+
+        b = FonteBinance("BTCUSDT", "1m", transporte=lambda u: json.dumps({"bidPrice": "100.0", "askPrice": "100.5", "bidQty": "2", "askQty": "3"}).encode())
+        self.assertEqual(b.livro(), (100.0, 100.5, 2.0, 3.0))
+        c = FonteCoinbase("BTC-USD", "1m", transporte=lambda u: json.dumps({"price": "100.2", "bid": "100.1", "ask": "100.3"}).encode())
+        self.assertEqual(c.livro(), (100.1, 100.3, 0.0, 0.0))
+
+    def test_coletor_grava_sem_duplicar_e_sobrevive_a_erro(self):
+        from mesa.coletor import Coletor, resumo
+
+        velas = dados.sintetico(60, seed=2, passo=60)
+
+        class Fonte1m:
+            passo = 60
+            falhar = False
+
+            def __init__(self):
+                self.agora = velas[10].t + 60
+
+            def velas(self, n, agora=None):
+                if self.falhar:
+                    raise OSError("rede caiu")
+                return [v for v in velas if v.t + 60 <= self.agora][-n:]
+
+            def livro(self):
+                if self.falhar:
+                    raise OSError("rede caiu")
+                return 100.0, 100.1, 1.0, 1.0
+
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Fonte1m()
+            c = Coletor(f, tmp)
+            r = c.passo(1_000_000)
+            self.assertAlmostEqual(r["spread_bps"], 0.1 / 100.05 * 1e4)
+            self.assertGreater(r["velas_novas"], 0)
+            self.assertEqual(c.passo(1_000_010)["velas_novas"], 0)                                # nada novo: não duplica
+            f.agora += 120
+            self.assertEqual(c.passo(1_000_020)["velas_novas"], 2)
+            ts = [v.t for v in dados.ler_csv(Path(tmp) / "velas1m.csv")]
+            self.assertEqual(ts, sorted(set(ts)))
+            self.assertEqual(Coletor(f, tmp).ultimo_t, ts[-1])                                    # retoma de onde parou
+            r = resumo(tmp)
+            self.assertEqual(r["livro"]["fotos"], 3)
+            self.assertAlmostEqual(r["livro"]["spread_bps_medio"], 0.1 / 100.05 * 1e4)
+            self.assertEqual(r["velas"]["n"], len(ts))
+
+            f.falhar = True                                                                         # erro de rede não derruba o loop
+            chamadas = []
+            c.rodar(0, parar=lambda: len(chamadas) >= 2, dormir=lambda s: chamadas.append(s))
+            self.assertEqual(len(chamadas), 2)
+
+    def test_coletor_exige_velas_de_1_minuto(self):
+        from mesa.coletor import Coletor
+
+        class F:
+            passo = 3600
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                Coletor(F(), tmp)
+
+    def test_cli_coletar_resumo_e_curto(self):
+        import contextlib
+        import io
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(SystemExit):
+                principal(["coletar", "--pasta", tmp, "--resumo"])                                  # nada coletado ainda
+            velas = dados.sintetico(900, seed=2)                                                    # 1 h: o `curto` recusa
+            csv = str(Path(tmp) / "h.csv")
+            dados.salvar_csv(velas, csv)
+            with self.assertRaises(SystemExit):
+                principal(["curto", "--dados", csv])
+            v1m = dados.sintetico(300, seed=2, passo=60)                                            # 1 min mas poucos dados: recusa com mensagem
+            dados.salvar_csv(v1m, csv)
+            with self.assertRaises(SystemExit):
+                principal(["curto", "--dados", csv])
+
+            class Fonte:
+                passo = 60
+
+                def __init__(self, *a):
+                    pass
+
+                def livro(self):
+                    return 100.0, 100.2, 0.0, 0.0
+
+                def velas(self, n, agora=None):
+                    return v1m[-3:]
+
+            with mock.patch.dict("mesa.fontes.FONTES", {"binance": Fonte}):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(principal(["coletar", "--pasta", tmp, "--uma-vez"]), 0)
+            saida = io.StringIO()
+            with contextlib.redirect_stdout(saida):
+                self.assertEqual(principal(["coletar", "--pasta", tmp, "--resumo"]), 0)
+            self.assertIn("spread médio", saida.getvalue())
