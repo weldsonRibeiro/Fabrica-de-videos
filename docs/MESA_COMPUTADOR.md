@@ -135,9 +135,9 @@ python -m mesa baixar --fonte binance --intervalo 1m --desde 2026-08-15 --saida 
 
 **3) Rode o teste H2** (protocolo fixo no código: horizontes de 5, 15, 30 e 60 min × 2 agregadores = 8 testes, correção de Bonferroni):
 ```powershell
-python -m mesa curto --dados btc1m.csv --taxa-bps 7.5 --json h2.json
+python -m mesa curto --dados btc1m.csv --json h2.json
 ```
-Troque `7.5` pela sua taxa em bps (0,10% = 10; 0,075% = 7,5). A taxa é um fato da sua conta, por isso fica registrada no resultado.
+O padrão é 0,10% por lado (10 bps), a taxa de uma conta nova sem BNB. Se a sua for diferente, acrescente `--taxa-bps 7.5` (0,075% com BNB) ou o valor do seu *Nível de taxas*. A taxa é um fato da sua conta, por isso fica registrada no resultado.
 
 Como ler:
 - **PARTE 1** mostra, sem custo nenhum, quantas operações por dia os agentes fariam e o **ganho bruto por operação** em bps (1 bp = 0,01%). O **equilíbrio** é a maior taxa por lado com que ainda se empata. Se for **menor** que a sua taxa (+1 bp de derrapagem), a estratégia perde dinheiro — por mais operações que faça, só multiplica a perda.
@@ -153,7 +153,7 @@ Os arquivos (`velas1m.csv`, `livro.csv`) ficam na pasta e podem ser usados no pa
 
 **5) Agentes ao vivo em 1–5 minutos (simulado)**, para ver as probabilidades chegando:
 ```powershell
-python -m mesa vigiar --fonte binance --intervalo 1m --horizonte 15 --checagem 15 --taxa 7.5 --slippage 1 --pasta dados-mesa-1m
+python -m mesa vigiar --fonte binance --intervalo 1m --horizonte 15 --checagem 15 --taxa 10 --slippage 1 --pasta dados-mesa-1m
 ```
 Se, no passo 3, a estratégia for reprovada, esse modo ao vivo só vai confirmar em tempo real o que o teste já mostrou: tudo bloqueado por "valor esperado não cobre os custos".
 

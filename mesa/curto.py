@@ -23,7 +23,7 @@ from .relatorio import resumir
 
 HORIZONTES = [5, 15, 30, 60]                      # minutos
 AGREGADORES = ["logistico", "media"]
-TAXA_PADRAO_BPS = 7.5                              # Binance spot com desconto em BNB (0,075% por lado); sem BNB é 10
+TAXA_PADRAO_BPS = 10.0                             # Binance spot, conta nova sem BNB (0,10% por lado); com desconto em BNB seria 7,5
 SLIPPAGE_BPS = 1.0
 CENARIOS_TAXA_BPS = [10.0, 7.5, 5.0, 2.0, 0.0]     # sensibilidade: o que muda se a taxa fosse outra
 PROTOCOLO_H2 = {

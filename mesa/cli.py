@@ -135,7 +135,7 @@ def principal(argv: list[str] | None = None) -> int:
     s.add_argument("--resumo", action="store_true", help="só mostra o que já foi coletado (spread médio, dias, velas) e sai")
     s = sub.add_parser("curto", help="H2 (curto prazo, PRÉ-REGISTRADA): mede o ganho bruto por operação e o custo de equilíbrio com velas de 1 min")
     s.add_argument("--dados", required=True, help="CSV de velas de 1 min (baixe com: baixar --intervalo 1m)")
-    s.add_argument("--taxa-bps", type=float, default=7.5, help="SUA taxa por lado em bps (Binance spot: 10 padrão, 7,5 com BNB). É um fato da conta, fica registrada")
+    s.add_argument("--taxa-bps", type=float, default=10.0, help="SUA taxa por lado em bps (Binance spot: 10 padrão, 7,5 com BNB). É um fato da conta, fica registrada")
     s.add_argument("--json", help="salva o resultado neste arquivo")
 
     s = sub.add_parser("status", help="mostra o estado do vigia (posição simulada, resultado, último sinal)")
