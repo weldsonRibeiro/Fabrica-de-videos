@@ -5,3 +5,7 @@ dados/
 saida/
 .env
 vercel/.vercel/
+btc*.csv
+historico*.csv
+relatorio*.json
+dados-mesa/

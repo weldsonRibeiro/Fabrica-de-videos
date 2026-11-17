@@ -171,7 +171,7 @@ Detalhes de arquitetura e do design do jogo em [`docs/`](docs/).
 
 ## Mesa de operações (Bitcoin) — laboratório de simulação
 
-Módulo separado (`mesa/`) para pesquisar operações com **agentes leitores, probabilidades calibradas e risco**, só em **simulação** (não envia ordens a corretoras). Veja [`docs/MESA.md`](docs/MESA.md).
+Módulo separado (`mesa/`) para pesquisar operações com **agentes leitores, probabilidades calibradas e risco**, só em **simulação** (não envia ordens a corretoras). Veja [`docs/MESA.md`](docs/MESA.md) e o passo a passo para o computador em [`docs/MESA_COMPUTADOR.md`](docs/MESA_COMPUTADOR.md).
 
 ```bash
 python -m mesa sintetico --modo ruido --saida x.csv && python -m mesa backtest --dados x.csv   # testa a estrutura

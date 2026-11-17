@@ -32,6 +32,9 @@ h1{font-size:1.15rem;margin:0}h2{font-size:.8rem;color:var(--suave);text-transfo
 .barra i{position:absolute;top:-3px;width:4px;height:16px;border-radius:2px;background:var(--marca)}
 .barra b{position:absolute;left:50%;top:0;width:1px;height:10px;background:var(--suave)}
 .linha{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--linha);font-size:.92rem}.linha:last-child{border:0}
+table.bt{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:10px}table.bt th{color:var(--suave);font-weight:600;text-align:right;padding:4px 3px;font-size:.7rem;text-transform:uppercase}
+table.bt th:first-child,table.bt td:first-child{text-align:left}table.bt td{padding:7px 3px;border-top:1px solid var(--linha);text-align:right;font-variant-numeric:tabular-nums}
+.ev{color:var(--ok);font-weight:700}.veredito{margin:10px 0 0;padding-left:18px;font-size:.88rem}.veredito li{margin:4px 0}svg.graf{width:100%;height:90px;margin-top:8px;display:block}
 .log{font:.78rem/1.5 ui-monospace,Menlo,monospace;color:var(--suave);white-space:pre-wrap;overflow-wrap:anywhere}
 .aviso{margin-top:22px;color:var(--suave);font-size:.78rem}
 </style></head><body><main>
@@ -44,6 +47,7 @@ h1{font-size:1.15rem;margin:0}h2{font-size:.8rem;color:var(--suave);text-transfo
 <h2>O que os agentes pensam agora</h2><div class="card"><div class="suave" id="sinal">—</div>
 <div class="barra"><b></b><i id="marcador" style="left:50%"></i></div><div class="suave" style="display:flex;justify-content:space-between"><span>queda</span><span id="pa"></span><span>alta</span></div>
 <div id="leituras" style="margin-top:8px"></div></div>
+<h2>Backtest em dados reais</h2><div class="card"><div class="suave" id="bt-msg">—</div><div id="bt-corpo"></div></div>
 <h2>Operações simuladas</h2><div class="card" id="trades"></div>
 <h2>Eventos</h2><div class="card log" id="eventos"></div>
 <p class="aviso">⚠️ Simulação com preço real. Nenhuma ordem real é enviada. Passado não garante futuro; não é recomendação financeira.</p>
@@ -65,9 +69,35 @@ async function atualizar(){
   if(!ts.length)t.append(el("div","suave","nenhuma operação fechada ainda"));
   for(const x of ts){const l=el("div","linha");l.append(el("span","",(x.direcao>0?"compra":"venda")+" · "+x.motivo),el("span",x.ret_capital>=0?"pos":"neg",(x.ret_capital>=0?"+":"")+f(x.ret_capital*100)+"%"));t.append(l)}
   $("eventos").textContent=d.eventos.join("\\n")||"—";
+  desenharBacktest(d.backtest,d.backtest_estado);
+}
+function desenharBacktest(bt,est){
+  const msg=$("bt-msg"),corpo=$("bt-corpo");corpo.replaceChildren();
+  if(!bt){msg.textContent=est?est.mensagem+(est.estado==="erro"?" (tentando de novo em 1 h)":""):"ainda não iniciado — começa sozinho ao subir o servidor";return}
+  msg.textContent="período "+bt.periodo.de+" → "+bt.periodo.ate+" · "+bt.periodo.velas+" velas · gerado "+bt.gerado_em.replace("T"," ").slice(0,16)+" UTC · custo "+(bt.config.taxa_bps+bt.config.slippage_bps)+" bps por lado";
+  const ul=el("ul","veredito");for(const l of bt.veredito)ul.append(el("li","",l));corpo.append(ul);
+  const t=el("table","bt"),h=el("tr");for(const x of ["estratégia","tudo","últ. "+bt.meses_teste+"m","buy&hold","ops"])h.append(el("th","",x));t.append(h);
+  bt.completo.forEach((r,i)=>{const q=bt.teste[i],l=el("tr");
+    const c1=el("td",r.significativo?"ev":"",r.nome+(r.significativo?" ✓":""));l.append(c1);
+    for(const v of [r.retorno,q.retorno,r.buy_hold]){l.append(el("td",v>=0?"pos":"neg",(v>=0?"+":"")+f(v*100,1)+"%"))}
+    l.append(el("td","",String(r.operacoes)));t.append(l)});corpo.append(t);
+  const cal=bt.calibracao;if(cal&&cal.n){corpo.append(el("div","suave","calibração: Brier "+f(cal.brier,4)+" (chute de 50% = 0,2500) · acerto "+f(cal.acuracia*100,1)+"% em "+cal.n+" previsões fora da amostra"))}
+  corpo.lastChild&&(corpo.lastChild.style.marginTop="8px");
+  const g=bt.grafico;if(g&&g.t.length>2){const W=300,H=90,mx=Math.max(...g.estrategia,...g.buy_hold),mn=Math.min(...g.estrategia,...g.buy_hold),N=g.t.length;
+    const NS="http://www.w3.org/2000/svg",sv=document.createElementNS(NS,"svg");sv.setAttribute("viewBox","0 0 "+W+" "+H);sv.setAttribute("class","graf");sv.setAttribute("preserveAspectRatio","none");
+    for(const [ys,cor] of [[g.buy_hold,"#9aa5b4"],[g.estrategia,"#6b93ff"]]){const p=document.createElementNS(NS,"polyline");p.setAttribute("fill","none");p.setAttribute("stroke",cor);p.setAttribute("stroke-width","1.6");p.setAttribute("vector-effect","non-scaling-stroke");
+      p.setAttribute("points",ys.map((y,i)=>(i/(N-1)*W).toFixed(1)+","+(H-4-(y-mn)/Math.max(mx-mn,1e-9)*(H-8)).toFixed(1)).join(" "));sv.append(p)}
+    corpo.append(sv);corpo.append(el("div","suave","cinza = comprar e segurar · azul = estratégia (capital = 100 no início)"))}
 }
 atualizar();setInterval(atualizar,10000);
 </script></body></html>"""
+
+
+def _json(arq: Path):
+    try:
+        return json.loads(arq.read_text(encoding="utf-8")) if arq.exists() else None
+    except (OSError, ValueError):
+        return None
 
 
 def _estado(pasta: Path) -> dict:
@@ -76,7 +106,8 @@ def _estado(pasta: Path) -> dict:
     log = pasta / "eventos.log"
     if log.exists():
         eventos = log.read_text(encoding="utf-8").splitlines()[-15:]
-    return {"estado": json.loads(arq.read_text(encoding="utf-8")) if arq.exists() else None, "eventos": eventos}
+    return {"estado": _json(arq), "eventos": eventos, "backtest": _json(pasta / "backtest.json"),
+            "backtest_estado": _json(pasta / "backtest.estado.json")}
 
 
 def servidor(pasta: Path | str, chave: str, host: str = "127.0.0.1", porta: int = 8080) -> ThreadingHTTPServer:

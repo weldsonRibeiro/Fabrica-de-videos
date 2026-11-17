@@ -19,14 +19,18 @@ velas ──▶ leitores (tendência · momentum · reversão · fluxo/volume ·
         ordem SIMULADA, executada na abertura da vela seguinte (com taxa e derrapagem)
 ```
 
-## Como usar
+## Passo a passo no seu computador
+
+**[docs/MESA_COMPUTADOR.md](MESA_COMPUTADOR.md)** — instalar o Python, baixar o histórico real, rodar o backtest, ler o resultado, o protocolo de teste e como decidir.
+
+## Como usar (resumo)
 
 ```bash
-# 1) dados reais do Bitcoin (rode no SEU computador; a Binance pública não pede chave, mas algumas redes a bloqueiam)
-python -m mesa baixar --simbolo BTCUSDT --intervalo 1h --desde 2021-01-01 --saida btc.csv
+# 1) dados reais do Bitcoin (sem chave; --fonte binance é a alternativa se a Coinbase estiver bloqueada na sua rede)
+python -m mesa baixar --fonte coinbase --desde 2022-01-01 --saida btc.csv
 
 # 2) backtest com custos, contra linhas de base (média simples e cada leitor sozinho)
-python -m mesa backtest --dados btc.csv --horizonte 24
+python -m mesa backtest --dados btc.csv --horizonte 24 --json relatorio.json
 
 # 3) o protocolo certo: ajuste SEM espiar o período final e teste UMA vez no que o modelo nunca viu
 python -m mesa backtest --dados btc.csv --ate 2024-06-30      # onde você mexe e aprende
@@ -38,6 +42,25 @@ python -m mesa avaliar --dados btc.csv --diario diario.jsonl
 ```
 
 Sem dados reais à mão, `python -m mesa sintetico --modo ruido|momentum|regimes --saida x.csv` gera preços **inventados** para testar a estrutura. Eles **não são o mercado**.
+
+## Leitores
+
+| Leitor | O que olha |
+|---|---|
+| tendência | cruzamento de médias exponenciais, em unidades de volatilidade |
+| momentum | retorno das últimas 24 velas |
+| reversão à média | quão esticado o preço está em relação à média de 48 velas |
+| fluxo e volume | pico de volume na direção da vela |
+| regime de volatilidade | **veta** operações quando a volatilidade explode |
+| **medo e ganância** (`--medo`) | índice diário (alternative.me, sem chave); contrário nos extremos; só conta 24 h depois de publicado |
+| **funding** (`--funding binance\|bybit`) | taxa de financiamento dos perpétuos: muito positiva = compradores alavancados lotando um lado |
+| notícias | interface pronta; falta um classificador de manchetes datadas |
+
+Cada leitor só recebe o passado. Os de fora (medo e ganância, funding) guardam **quando cada dado foi publicado** e nunca devolvem nada do futuro (há teste automático).
+
+## Backtest automático no servidor
+
+O vigia, ao subir, **baixa sozinho 2 anos de histórico real** (Coinbase), roda o relatório (período completo + últimos 12 meses como teste, calibração, veredito) e mostra na página de status; **refaz toda semana**. Controles por variável de ambiente: `MESA_BACKTEST_DIAS` (padrão 730; `0` desliga), `MESA_MEDO` (`0` desliga o leitor de medo e ganância), `MESA_FUNDING` (`binance` ou `bybit`). Observação: servidores nos EUA (como o Railway em `iad`) costumam ser **bloqueados** pelas APIs de funding da Binance e da Bybit; nesse caso o relatório avisa e segue sem esse leitor.
 
 ## Monitorar 24 horas com dados reais (simulado)
 

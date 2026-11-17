@@ -133,5 +133,42 @@ class Noticias:
         return Leitura(self.nome, 0.5 + 0.15 * s, min(1.0, sum(w for w, _ in pesos) / 3), nota=f"sentimento {s:+.2f}")
 
 
-def leitores_padrao() -> list[Leitor]:
-    return [Tendencia(), Momentum(), Reversao(), Fluxo(), Regime()]
+def _agora(h: Sequence[Vela]) -> int:
+    """Instante da decisão = fechamento da última vela da janela."""
+    return h[-1].t + (h[-1].t - h[-2].t)
+
+
+class MedoGanancia:
+    """Índice de medo e ganância (contrário nos extremos: medo extremo inclina para alta, ganância extrema para baixa)."""
+    nome, janela = "medo e ganância", 2
+
+    def __init__(self, serie):
+        self.serie = serie
+
+    def ler(self, h):
+        pts = self.serie.ate(_agora(h), 1)
+        if not pts:
+            return Leitura(self.nome, 0.5, 0.0, nota="sem dado")
+        v = pts[-1][1]
+        z = (50 - v) / 50
+        return Leitura(self.nome, 0.5 + 0.06 * z, min(1.0, abs(v - 50) / 40), nota=f"índice {v:.0f}")
+
+
+class Funding:
+    """Funding dos perpétuos: muito positivo = compradores alavancados lotando um lado (inclina para baixo); muito negativo, o inverso."""
+    nome, janela = "funding", 2
+
+    def __init__(self, serie):
+        self.serie = serie
+
+    def ler(self, h):
+        pts = self.serie.ate(_agora(h), 31)
+        if len(pts) < 12:
+            return Leitura(self.nome, 0.5, 0.0, nota="sem histórico")
+        atual, resto = pts[-1][1], [v for _, v in pts[:-1]]
+        z = (atual - media(resto)) / max(desvio(resto), 1e-9)
+        return Leitura(self.nome, sigmoide(-0.5 * z), min(1.0, abs(z) / 3), nota=f"funding {atual * 100:+.4f}% (z={z:+.1f})")
+
+
+def leitores_padrao(extras: Sequence[Leitor] = ()) -> list[Leitor]:
+    return [Tendencia(), Momentum(), Reversao(), Fluxo(), Regime(), *extras]
