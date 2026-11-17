@@ -12,7 +12,7 @@ from typing import Callable
 from . import dados
 from .backtest import Config
 from .corretora import salvar_json
-from .relatorio import relatorio
+from .relatorio import formatar, relatorio
 
 IDADE_MAX_DIAS = 7
 
@@ -46,6 +46,7 @@ def rodar_uma_vez(pasta: Path | str, fonte: str, simbolo: str, intervalo: str, d
     rel = relatorio(velas, lista, cfg, fonte=f"{fonte}:{simbolo} {intervalo}", avisos=avisos)
     salvar_json(pasta / "backtest.json", rel)
     _estado(pasta, "pronto", f"pronto ({len(velas)} velas)")
+    print("[backtest] RESULTADO\n" + formatar(rel), flush=True)             # fica no log do servidor, para consulta
     return rel
 
 
