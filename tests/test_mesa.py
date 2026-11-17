@@ -725,3 +725,35 @@ class TestIdentificacaoHttp(unittest.TestCase):
             with mock.patch("urllib.request.urlopen", falso):
                 funcao("https://exemplo.test/x")
             self.assertTrue(visto["ua"] and "python-urllib" not in visto["ua"].lower(), funcao.__module__)
+
+
+class TestRelatorioNoLog(unittest.TestCase):
+    def test_mostra_o_relatorio_guardado_ao_subir_e_permite_forcar_recalculo(self):
+        import contextlib
+        import io
+        import os
+
+        from mesa import servico
+
+        v = dados.sintetico(2500, seed=2, modo="momentum")
+        with tempfile.TemporaryDirectory() as tmp:
+            saida = io.StringIO()
+            with contextlib.redirect_stdout(saida):
+                self.assertFalse(servico.mostrar_existente(Path(tmp)))                    # nada guardado ainda: não imprime
+            with mock.patch.object(dados, "baixar_coinbase", return_value=v), contextlib.redirect_stdout(io.StringIO()) as log:
+                servico.rodar_uma_vez(tmp, "coinbase", "BTC-USD", "1h", 60, Config(horizonte=6), lambda vv: (leitores_padrao(), []))
+            self.assertIn("RESULTADO", log.getvalue())
+            self.assertIn("VEREDITO", log.getvalue())
+            with contextlib.redirect_stdout(io.StringIO()) as log2:
+                self.assertTrue(servico.mostrar_existente(Path(tmp)))
+            self.assertIn("ÚLTIMO RELATÓRIO GUARDADO", log2.getvalue())
+            self.assertIn("PERÍODO COMPLETO", log2.getvalue())
+
+            chamadas = []
+            with mock.patch.object(servico, "rodar_uma_vez", side_effect=lambda *a, **k: chamadas.append(1)), \
+                    mock.patch.dict(os.environ, {"MESA_BACKTEST_REFAZER": "1"}), contextlib.redirect_stdout(io.StringIO()):
+                ciclos = {"n": 0}
+                t = servico.iniciar_em_segundo_plano(tmp, "coinbase", "BTC-USD", "1h", 60, Config(), lambda vv: ([], []),
+                                                     espera_s=0, dormir=lambda s: ciclos.__setitem__("n", ciclos["n"] + 1), parar=lambda: ciclos["n"] >= 2)
+                t.join(5)
+            self.assertEqual(len(chamadas), 1)                                            # recalculou uma vez, mesmo com relatório recente
