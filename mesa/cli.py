@@ -94,6 +94,11 @@ def principal(argv: list[str] | None = None) -> int:
     s.add_argument("--horizontes", default="4,8,12,24,48,96", help="lista em horas, separada por vírgula (defina ANTES de olhar os resultados)")
     s.add_argument("--meses-teste", type=int, default=12)
     s.add_argument("--json", help="salva o resultado completo neste arquivo")
+    s = sub.add_parser("hipotese", help="roda uma hipótese PRÉ-REGISTRADA (parâmetros e critérios fixos no código)")
+    s.add_argument("nome", choices=["funding"], help="funding = H1: o funding dos perpétuos informa o retorno das próximas 24 h")
+    s.add_argument("--dados", required=True, help="CSV de velas de 1 h")
+    s.add_argument("--funding", choices=["binance", "bybit"], required=True, help="de onde baixar o histórico de funding")
+    s.add_argument("--json", help="salva o resultado neste arquivo")
     s = sub.add_parser("sinal", help="recomendação SIMULADA para a última vela e registro no diário")
     comum(s)
     s.add_argument("--diario", required=True)
@@ -198,6 +203,30 @@ def principal(argv: list[str] | None = None) -> int:
         print(f"{len(velas)} velas de {simbolo} ({a.intervalo}, {a.fonte}) em {a.saida} · velas faltando no meio: {dados.contar_lacunas(velas)}")
         return 0
 
+    if a.cmd == "hipotese":
+        from . import externos
+        from .hipotese import PROTOCOLO_H1, avaliar_funding, formatar as formatar_hipotese
+
+        velas = dados.ler_csv(a.dados)
+        if velas[1].t - velas[0].t != 3600:
+            raise SystemExit("esta hipótese usa velas de 1 hora")
+        if len(velas) < 8000:
+            raise SystemExit(f"são necessárias ao menos ~8.000 velas de 1 h (≈ 11 meses); o arquivo tem {len(velas)}. Baixe mais histórico.")
+        print(f"Protocolo fixo: horizonte {PROTOCOLO_H1['horizonte']} h, custo {PROTOCOLO_H1['taxa_bps'] + PROTOCOLO_H1['slippage_bps']:.0f} bps por lado, {PROTOCOLO_H1['n_testes']} testes. "
+              "Não há parâmetros para mexer: se reprovar, a hipótese está encerrada.\nBaixando o funding…", flush=True)
+        try:
+            serie = externos.FUNDING[a.funding](desde=velas[0].t - 30 * 86400, ate=velas[-1].t)
+            if not len(serie):
+                raise ValueError("a API não devolveu dados")
+        except Exception as e:  # noqa: BLE001
+            raise SystemExit(f"não consegui baixar o funding de {a.funding} ({e}). Tente a outra fonte (--funding binance|bybit) ou outra rede.")
+        v = avaliar_funding(velas, serie)
+        print("\n" + formatar_hipotese(v))
+        if a.json:
+            Path(a.json).write_text(json.dumps(v, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"\nresultado completo em {a.json}")
+        print("\n" + AVISO)
+        return 0
     velas, cfg = dados.ler_csv(a.dados), _cfg(a)
     ts = lambda d: int(datetime.fromisoformat(d).replace(tzinfo=timezone.utc).timestamp())  # noqa: E731
     if a.de:

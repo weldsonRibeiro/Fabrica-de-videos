@@ -107,6 +107,19 @@ python -m mesa status --pasta dados-mesa            # em outro terminal: posiç�
 ```
 Quer só uma checagem por hora, sem deixar nada aberto? Use `python -m mesa vigiar --pasta dados-mesa --uma-vez` no **Agendador de Tarefas** (Windows) ou no **cron** (Mac/Linux), de hora em hora.
 
+## Passo 8b — Hipótese H1 (funding): o teste pré-registrado
+
+Este é o **único teste novo planejado** (veja `docs/RESULTADOS.md`). O protocolo está **travado no código**: horizonte de 24 h, custo de 0,15% por lado, 2 testes e os critérios de aprovação. **Não existem parâmetros para mexer** — de propósito.
+
+```bash
+python -m mesa baixar --fonte coinbase --desde 2024-11-01 --saida btc.csv       # precisa de ≥ 8.000 velas de 1 h (≈ 11 meses)
+python -m mesa hipotese funding --dados btc.csv --funding bybit --json h1.json   # ou: --funding binance
+```
+- Baixa o funding sozinho (se a API estiver bloqueada na sua rede, tente a outra: `--funding binance` ou `bybit`).
+- Imprime o protocolo, os resultados e cada critério com ✓ ou ✗, e o **veredito**.
+- **REPROVADA** → a hipótese está encerrada. **Não** mude nada e rode de novo; para testar outra ideia, ela precisa ser escrita antes.
+- **APROVADA** → vira candidata a **paper trading ao vivo** (≥ 8 semanas, ≥ 30 operações). **Não** é luz verde para dinheiro real. Me avise e eu preparo o vigia com o leitor de funding (no servidor ele não funciona, as APIs bloqueiam IPs dos EUA).
+
 ## Passo 9 — Atualizar o código quando eu avisar
 
 ```bash

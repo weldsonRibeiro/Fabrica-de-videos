@@ -35,6 +35,7 @@ class Vigia:
         self.velas: list[Vela] = []
         self.ultimo_sinal_t = 0
         self.ultimo_preco = 0.0
+        self.inicio: dict | None = None            # {t, preco}: de onde começa a contar o paper trading
         self._carregar()
 
     # --- estado em disco ------------------------------------------------------------------------
@@ -51,12 +52,13 @@ class Vigia:
             self.corretora.de_dict(d["corretora"])
             self.guarda.de_dict(d["guarda"])
             self.ultimo_sinal_t = d.get("ultimo_sinal_t", 0)
+            self.inicio = d.get("inicio")
 
     def _salvar(self, agora: float, ultimo_sinal: dict | None = None) -> None:
         d = {"atualizado_em": datetime.fromtimestamp(agora, timezone.utc).isoformat(timespec="seconds"),
              "modo": "SIMULAÇÃO (nenhuma ordem real é enviada)", "preco": self.ultimo_preco,
              "equity": round(self.corretora.equity(self.ultimo_preco or 0), 2), "capital_inicial": self.corretora.capital_inicial,
-             "ultimo_sinal_t": self.ultimo_sinal_t, "corretora": self.corretora.para_dict(), "guarda": self.guarda.para_dict()}
+             "ultimo_sinal_t": self.ultimo_sinal_t, "inicio": self.inicio, "corretora": self.corretora.para_dict(), "guarda": self.guarda.para_dict()}
         if ultimo_sinal is not None:
             d["ultimo_sinal"] = ultimo_sinal
         elif self._estado.exists():
@@ -75,6 +77,8 @@ class Vigia:
         eventos: list[str] = []
         preco = self.fonte.preco()
         self.ultimo_preco = preco
+        if self.inicio is None:
+            self.inicio = {"t": int(agora), "preco": preco}
 
         trade = self.corretora.marcar(int(agora), preco)           # stop / prazo da posição aberta
         if trade:

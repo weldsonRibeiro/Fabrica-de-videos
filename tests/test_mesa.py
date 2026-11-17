@@ -839,3 +839,124 @@ class TestVarredura(unittest.TestCase):
                 self.assertEqual(principal(["varrer", "--dados", csv, "--horizontes", "6,12", "--meses-teste", "1", "--json", js]), 0)
             self.assertIn("VARREDURA DE HORIZONTES", saida.getvalue())
             self.assertEqual(json.loads(Path(js).read_text())["horizontes"], [6, 12])
+
+
+class TestHipotesePreRegistrada(unittest.TestCase):
+    def serie_funding(self, velas, informativo, seed=1):
+        """Funding a cada 8 h. Informativo = construído com o retorno das 24 h SEGUINTES (só para provar que o teste detecta sinal real)."""
+        import math
+        import random
+
+        from mesa.externos import Serie
+
+        rnd = random.Random(seed)
+        por_t = {v.t: i for i, v in enumerate(velas)}
+        pts = []
+        for i in range(0, len(velas) - 25, 8):
+            fut = math.log(velas[i + 24].c / velas[i].c) / (0.005 * math.sqrt(24))
+            pts.append((velas[i].t, 1e-4 + (-5e-5 * fut if informativo else 0) + 1e-5 * rnd.gauss(0, 1)))
+        return Serie(pts)
+
+    def test_ruido_e_reprovado(self):
+        from mesa.hipotese import avaliar_funding
+
+        velas = dados.sintetico(6000, seed=5, modo="ruido")
+        v = avaliar_funding(velas, self.serie_funding(velas, informativo=False))
+        self.assertFalse(v["aprovado"])
+        self.assertIn("REPROVADA", v["veredito"])
+        self.assertIn("encerrada", v["veredito"])
+        json.dumps(v)
+
+    def test_sinal_real_e_aprovado_com_todos_os_criterios(self):
+        from mesa.hipotese import avaliar_funding
+
+        velas = dados.sintetico(6000, seed=5, modo="ruido")
+        v = avaliar_funding(velas, self.serie_funding(velas, informativo=True))
+        self.assertTrue(v["aprovado"], v["avaliados"])
+        melhor = next(a for a in v["avaliados"] if a["passou"])
+        self.assertGreater(melhor["metade_1"], 0)
+        self.assertGreater(melhor["metade_2"], 0)
+        self.assertGreaterEqual(melhor["operacoes"], 30)
+        self.assertLessEqual(melhor["p_valor"], 0.025)
+        self.assertIn("NÃO para dinheiro real", v["veredito"])
+
+    def test_protocolo_e_fixo_e_a_cli_nao_deixa_mexer(self):
+        import contextlib
+        import io
+
+        from mesa.hipotese import PROTOCOLO_H1
+
+        self.assertEqual((PROTOCOLO_H1["horizonte"], PROTOCOLO_H1["n_testes"]), (24, 2))
+        with tempfile.TemporaryDirectory() as tmp:
+            csv = str(Path(tmp) / "h.csv")
+            dados.salvar_csv(dados.sintetico(1000, seed=1), csv)
+            for extra in (["--horizonte", "6"], ["--taxa", "1"]):
+                with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                    principal(["hipotese", "funding", "--dados", csv, "--funding", "bybit"] + extra)      # não existe esse parâmetro
+            with self.assertRaises(SystemExit) as erro:
+                principal(["hipotese", "funding", "--dados", csv, "--funding", "bybit"])
+            self.assertIn("8.000", str(erro.exception))                                                    # poucas velas: recusa
+
+    def test_cli_falha_de_download_e_caminho_feliz(self):
+        import contextlib
+        import io
+
+        from mesa import externos
+
+        with tempfile.TemporaryDirectory() as tmp:
+            csv = str(Path(tmp) / "h.csv")
+            dados.salvar_csv(dados.sintetico(8100, seed=1), csv)
+            with mock.patch.dict(externos.FUNDING, {"bybit": mock.Mock(side_effect=OSError("HTTP 403"))}), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(SystemExit) as erro:
+                    principal(["hipotese", "funding", "--dados", csv, "--funding", "bybit"])
+            self.assertIn("403", str(erro.exception))
+            falso = {"protocolo": __import__("mesa.hipotese", fromlist=["x"]).PROTOCOLO_H1, "dados": {"velas": 8100, "de": "a", "ate": "b", "pontos_funding": 5},
+                     "base": {"retorno": 0.0, "brier": 0.25}, "buy_hold": 0.1, "veredito": "REPROVADA: teste",
+                     "avaliados": [{"nome": "só funding", "retorno": 0.0, "metade_1": 0.0, "metade_2": 0.0, "operacoes": 3, "p_valor": 1.0, "ic95": [None, None],
+                                    "brier": None, "criterios": {"operações ≥ 30": False}, "passou": False}]}
+            saida = io.StringIO()
+            with mock.patch.dict(externos.FUNDING, {"bybit": lambda **k: externos.Serie([(1, 1.0)])}), \
+                    mock.patch("mesa.hipotese.avaliar_funding", return_value=falso), contextlib.redirect_stdout(saida):
+                self.assertEqual(principal(["hipotese", "funding", "--dados", csv, "--funding", "bybit"]), 0)
+            self.assertIn("Protocolo fixo", saida.getvalue())
+            self.assertIn("VEREDITO: REPROVADA", saida.getvalue())
+
+
+class TestPlacarAoVivo(unittest.TestCase):
+    def test_vigia_registra_o_inicio_uma_vez_e_o_placar_usa_o_criterio_fixo(self):
+        from mesa.painel import CRITERIO_DIAS, CRITERIO_OPS, _ao_vivo
+        from mesa.vigia import Vigia
+
+        with tempfile.TemporaryDirectory() as tmp:
+            velas = dados.sintetico(900, seed=4)
+            f = FonteFalsa(velas)
+            f.agora = velas[-1].t + 3600
+            v = Vigia(f, leitores_padrao(), Config(agregador="media"), tmp)
+            v.passo(f.agora)
+            inicio = dict(v.inicio)
+            self.assertEqual(inicio["preco"], f.preco())
+            v.passo(f.agora + 7200)
+            Vigia(f, leitores_padrao(), Config(agregador="media"), tmp).passo(f.agora + 9000)
+            self.assertEqual(json.loads((Path(tmp) / "estado.json").read_text())["inicio"], inicio)    # não muda ao reiniciar
+
+        estado = {"inicio": {"t": 1_000_000, "preco": 100.0}, "atualizado_em": "1970-01-12T13:46:40+00:00", "equity": 10_100.0, "preco": 90.0,
+                  "corretora": {"capital_inicial": 10_000.0, "trades": [{"ret_capital": 0.01}, {"ret_capital": -0.002}, {"ret_capital": 0.004}]}}
+        a = _ao_vivo(estado)
+        self.assertAlmostEqual(a["retorno"], 0.01)
+        self.assertAlmostEqual(a["buy_hold"], -0.10)
+        self.assertEqual((a["operacoes"], a["criterio"]), (3, {"dias": CRITERIO_DIAS, "operacoes": CRITERIO_OPS}))
+        self.assertEqual((CRITERIO_DIAS, CRITERIO_OPS), (56, 30))
+        self.assertIsNone(_ao_vivo(None))
+
+
+class TestLeitorUnicoComJanelaCurta(unittest.TestCase):
+    def test_backtest_com_so_um_leitor_de_janela_curta_nao_quebra(self):
+        """Regressão: só o leitor de funding (janela 2) fazia a volatilidade fatiar antes do início dos dados."""
+        from mesa.externos import Serie
+        from mesa.leitores import Funding
+
+        velas = dados.sintetico(1200, seed=3)
+        prep = preparar(velas, [Funding(Serie([(velas[0].t, 1e-4)]))], 6)
+        self.assertGreaterEqual(prep.inicio, 50)
+        r = rodar(prep, Config(horizonte=6, agregador="media"))
+        self.assertEqual(r.trades, [])                                                    # sem opinião, sem operações
