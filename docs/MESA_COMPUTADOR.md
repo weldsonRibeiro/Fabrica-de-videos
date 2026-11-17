@@ -150,6 +150,8 @@ python -m mesa painel
 ```
 O cartão **Curto prazo — H2** mostra o veredito, as 8 linhas (operações por dia, ganho bruto, equilíbrio, retorno) e o cartão **Coletor 24 h** mostra o spread real. O `curto` já grava o resultado em `dados-mesa/curto.json`, de onde o painel lê. Se você rodou com `--json h2.json`, use `python -m mesa painel --curto h2.json`.
 
+**No celular (mesma rede Wi-Fi):** `python -m mesa painel --celular` imprime também um link `http://192.168.x.x:8080/?k=...` para abrir no celular. Continua protegido pela chave e só funciona dentro da sua rede (se o Windows perguntar sobre o firewall, permita em *Rede privada*). Para ver de qualquer lugar, use a página de status do servidor (`/?k=SUA_CHAVE`).
+
 **4) Coletor 24 h** (deixe o computador ligado; Ctrl+C para parar). Guarda velas de 1 min e a foto do melhor preço de compra/venda a cada 10 s — com isso medimos o **spread real**, que é um custo oculto:
 ```powershell
 python -m mesa coletar --fonte binance

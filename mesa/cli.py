@@ -142,6 +142,7 @@ def principal(argv: list[str] | None = None) -> int:
     s.add_argument("--pasta", default="dados-mesa")
     s.add_argument("--porta", type=int, default=8080)
     s.add_argument("--curto", help="resultado do H2 já salvo (ex.: h2.json) para mostrar no painel")
+    s.add_argument("--celular", action="store_true", help="deixa abrir no celular, na MESMA rede Wi-Fi (continua exigindo a chave; não fica na internet)")
 
     s = sub.add_parser("status", help="mostra o estado do vigia (posição simulada, resultado, último sinal)")
     s.add_argument("--pasta", default="dados-mesa")
@@ -191,11 +192,22 @@ def principal(argv: list[str] | None = None) -> int:
             chave = secrets.token_urlsafe(24)
             arq_chave.write_text(chave, encoding="utf-8")
         try:
-            srv = servidor(pasta, chave, "127.0.0.1", a.porta)
+            srv = servidor(pasta, chave, "0.0.0.0" if a.celular else "127.0.0.1", a.porta)
         except OSError as e:
             raise SystemExit(f"não consegui abrir a porta {a.porta} ({e}). Tente outra: --porta 8081")
         url = f"http://127.0.0.1:{a.porta}/?k={chave}"
-        print(f"Painel em {url}\n(só no seu computador; Ctrl+C para fechar)", flush=True)
+        if a.celular:
+            import socket
+
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sk:
+                    sk.connect(("192.0.2.1", 9))      # só descobre a rede; não envia nada
+                    ip = sk.getsockname()[0]
+            except OSError:
+                ip = "IP-DO-SEU-COMPUTADOR"
+            print(f"No CELULAR (mesma rede Wi-Fi): http://{ip}:{a.porta}/?k={chave}\n"
+                  "Se o Windows perguntar sobre o firewall, permita só em 'Rede privada'.", flush=True)
+        print(f"No computador: {url}\n(Ctrl+C para fechar)", flush=True)
         try:
             webbrowser.open(url)
         except Exception:  # noqa: BLE001

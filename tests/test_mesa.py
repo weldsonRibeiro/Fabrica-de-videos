@@ -1146,3 +1146,7 @@ class TestPainelCurtoEColeta(TestPaginaDaMesa):
             with mock.patch("mesa.painel.servidor", return_value=Srv()) as sv, mock.patch("webbrowser.open"):
                 principal(["painel", "--pasta", str(pasta)])
             self.assertEqual(sv.call_args[0][1], chave)                                           # a mesma chave nas próximas vezes
+            self.assertEqual(sv.call_args[0][2], "127.0.0.1")                                     # por padrão, só o próprio computador
+            with mock.patch("mesa.painel.servidor", return_value=Srv()) as sv, mock.patch("webbrowser.open"):
+                principal(["painel", "--pasta", str(pasta), "--celular"])
+            self.assertEqual(sv.call_args[0][2], "0.0.0.0")                                       # --celular abre para a rede local
