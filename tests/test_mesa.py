@@ -703,3 +703,25 @@ class TestCliExtras(unittest.TestCase):
             eventos = v.passo(f.agora)
             self.assertTrue(any("API fora" in e for e in eventos))
             self.assertTrue((Path(tmp) / "estado.json").exists())
+
+
+class TestIdentificacaoHttp(unittest.TestCase):
+    def test_todas_as_requisicoes_se_identificam(self):
+        """Regressão: o histórico levou HTTP 403 da Coinbase no servidor porque não enviava User-Agent."""
+        from mesa import dados as d, fontes
+
+        for funcao in (d._http, fontes._http):
+            visto = {}
+
+            class Resp:
+                def __enter__(self): return self
+                def __exit__(self, *a): return False
+                def read(self): return b"[]"
+
+            def falso(req, timeout=None):
+                visto["ua"] = req.get_header("User-agent")
+                return Resp()
+
+            with mock.patch("urllib.request.urlopen", falso):
+                funcao("https://exemplo.test/x")
+            self.assertTrue(visto["ua"] and "python-urllib" not in visto["ua"].lower(), funcao.__module__)

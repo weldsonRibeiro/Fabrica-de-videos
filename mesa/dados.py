@@ -84,7 +84,9 @@ Transporte = Callable[[str], bytes]
 
 
 def _http(url: str) -> bytes:
-    with urllib.request.urlopen(url, timeout=30) as r:
+    # Sem User-Agent próprio, o do Python ("Python-urllib") é recusado (HTTP 403) por Coinbase e outras APIs públicas.
+    req = urllib.request.Request(url, headers={"User-Agent": "mesa-pesquisa/0.1", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
         return r.read()
 
 
