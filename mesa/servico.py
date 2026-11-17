@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import traceback
@@ -50,13 +51,30 @@ def rodar_uma_vez(pasta: Path | str, fonte: str, simbolo: str, intervalo: str, d
     return rel
 
 
+def mostrar_existente(pasta: Path) -> bool:
+    """Ao subir, imprime no log o último relatório guardado (se houver): assim o resultado fica consultável sem abrir a página."""
+    arq = pasta / "backtest.json"
+    if not arq.exists():
+        return False
+    try:
+        rel = json.loads(arq.read_text(encoding="utf-8"))
+        print(f"[backtest] ÚLTIMO RELATÓRIO GUARDADO (gerado em {rel.get('gerado_em', '?')})\n" + formatar(rel), flush=True)
+        return True
+    except (OSError, ValueError, KeyError) as erro:
+        print(f"[backtest] não consegui ler o relatório guardado: {erro}", flush=True)
+        return False
+
+
 def iniciar_em_segundo_plano(pasta, fonte, simbolo, intervalo, dias, cfg, leitores_fn, espera_s: float = 3600.0,
                              dormir: Callable[[float], None] = time.sleep, parar: Callable[[], bool] = lambda: False) -> threading.Thread:
     pasta = Path(pasta)
 
     def laco():
+        mostrar_existente(pasta)
+        forcar = os.environ.get("MESA_BACKTEST_REFAZER") == "1"       # força um recálculo ao subir (ex.: depois de mudar o código)
         while not parar():
-            if precisa_rodar(pasta):
+            if forcar or precisa_rodar(pasta):
+                forcar = False
                 try:
                     rodar_uma_vez(pasta, fonte, simbolo, intervalo, dias, cfg, leitores_fn)
                 except Exception as erro:  # noqa: BLE001 — erro de rede/API não derruba o vigia; tenta de novo na próxima hora
