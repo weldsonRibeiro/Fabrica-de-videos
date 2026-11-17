@@ -43,7 +43,7 @@ class Preparado:
 
 def preparar(velas: list[Vela], leitores: list[Leitor], horizonte: int = 24) -> Preparado:
     """Calcula as leituras de cada vela UMA vez. Cada leitor só recebe o passado até aquela vela."""
-    jmax = max(l.janela for l in leitores)
+    jmax = max(max(l.janela for l in leitores), 50)   # a volatilidade usa as 48 velas anteriores, mesmo que os leitores precisem de menos
     X, veto, vol, y = {}, {}, {}, {}
     n = len(velas)
     for i in range(jmax, n):

@@ -47,6 +47,7 @@ table.bt th:first-child,table.bt td:first-child{text-align:left}table.bt td{padd
 <h2>O que os agentes pensam agora</h2><div class="card"><div class="suave" id="sinal">—</div>
 <div class="barra"><b></b><i id="marcador" style="left:50%"></i></div><div class="suave" style="display:flex;justify-content:space-between"><span>queda</span><span id="pa"></span><span>alta</span></div>
 <div id="leituras" style="margin-top:8px"></div></div>
+<h2>Paper trading ao vivo</h2><div class="card"><div id="av-corpo" class="suave">—</div></div>
 <h2>Backtest em dados reais</h2><div class="card"><div class="suave" id="bt-msg">—</div><div id="bt-corpo"></div></div>
 <h2>Horizontes (varredura corrigida)</h2><div class="card"><div class="suave" id="vr-msg">—</div><div id="vr-corpo"></div></div>
 <h2>Operações simuladas</h2><div class="card" id="trades"></div>
@@ -70,7 +71,16 @@ async function atualizar(){
   if(!ts.length)t.append(el("div","suave","nenhuma operação fechada ainda"));
   for(const x of ts){const l=el("div","linha");l.append(el("span","",(x.direcao>0?"compra":"venda")+" · "+x.motivo),el("span",x.ret_capital>=0?"pos":"neg",(x.ret_capital>=0?"+":"")+f(x.ret_capital*100)+"%"));t.append(l)}
   $("eventos").textContent=d.eventos.join("\\n")||"—";
-  desenharBacktest(d.backtest,d.backtest_estado);desenharVarredura(d.varredura,d.varredura_estado);
+  desenharBacktest(d.backtest,d.backtest_estado);desenharVarredura(d.varredura,d.varredura_estado);desenharAoVivo(d.ao_vivo);
+}
+function desenharAoVivo(a){
+  const c=$("av-corpo");c.replaceChildren();if(!a){c.textContent="começa a contar no próximo ciclo";return}
+  const pc=x=>(x>=0?"+":"")+f(x*100,2)+"%",linha=(k,v,cl)=>{const l=el("div","linha");l.append(el("span","",k),el("span",cl||"",v));c.append(l)};
+  linha("rodando há",f(a.dias,1)+" dias · "+a.operacoes+" operações simuladas");
+  linha("resultado simulado",pc(a.retorno),a.retorno>=0?"pos":"neg");linha("comprar e segurar no mesmo período",pc(a.buy_hold),a.buy_hold>=0?"pos":"neg");
+  if(a.ic95)linha("IC 95% por operação","["+pc(a.ic95[0])+" , "+pc(a.ic95[1])+"]");
+  const ok=a.dias>=a.criterio.dias&&a.operacoes>=a.criterio.operacoes;
+  c.append(el("div","suave","Critério definido de antemão: só reavaliar com ≥ "+a.criterio.dias+" dias E ≥ "+a.criterio.operacoes+" operações ("+Math.min(100,Math.round(a.dias/a.criterio.dias*100))+"% do tempo · "+Math.min(100,Math.round(a.operacoes/a.criterio.operacoes*100))+"% das operações). "+(ok?"Já dá para avaliar: aprova só se o retorno for positivo E o IC 95% ficar acima de zero.":"Antes disso, qualquer resultado é ruído.")));
 }
 function desenharVarredura(v,est){
   const msg=$("vr-msg"),corpo=$("vr-corpo");corpo.replaceChildren();
@@ -112,13 +122,34 @@ def _json(arq: Path):
         return None
 
 
+CRITERIO_DIAS, CRITERIO_OPS = 56, 30      # pré-definido: reavaliar com ≥ 8 semanas E ≥ 30 operações simuladas
+
+
+def _ao_vivo(estado: dict | None) -> dict | None:
+    """Placar do paper trading: o único teste limpo, com dados que não existiam quando o sistema foi escrito."""
+    if not estado or not estado.get("inicio"):
+        return None
+    from datetime import datetime
+
+    from .backtest import _bootstrap
+
+    c, ini = estado["corretora"], estado["inicio"]
+    agora = datetime.fromisoformat(estado["atualizado_em"]).timestamp()
+    rets = [t["ret_capital"] for t in c["trades"]]
+    ic, _ = _bootstrap(rets) if len(rets) >= 2 else ((None, None), 1.0)
+    return {"dias": round((agora - ini["t"]) / 86400, 1), "operacoes": len(rets), "retorno": estado["equity"] / c["capital_inicial"] - 1,
+            "buy_hold": estado["preco"] / ini["preco"] - 1, "ic95": [None if x != x else x for x in ic] if ic[0] is not None else None,
+            "criterio": {"dias": CRITERIO_DIAS, "operacoes": CRITERIO_OPS}}
+
+
 def _estado(pasta: Path) -> dict:
     arq = pasta / "estado.json"
     eventos = []
     log = pasta / "eventos.log"
     if log.exists():
         eventos = log.read_text(encoding="utf-8").splitlines()[-15:]
-    return {"estado": _json(arq), "eventos": eventos, "backtest": _json(pasta / "backtest.json"),
+    estado = _json(arq)
+    return {"estado": estado, "ao_vivo": _ao_vivo(estado), "eventos": eventos, "backtest": _json(pasta / "backtest.json"),
             "backtest_estado": _json(pasta / "backtest.estado.json"),
             "varredura": _json(pasta / "varredura.json"), "varredura_estado": _json(pasta / "varredura.estado.json")}
 

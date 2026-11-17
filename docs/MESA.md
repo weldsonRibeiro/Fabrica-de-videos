@@ -58,6 +58,10 @@ Sem dados reais à mão, `python -m mesa sintetico --modo ruido|momentum|regimes
 
 Cada leitor só recebe o passado. Os de fora (medo e ganância, funding) guardam **quando cada dado foi publicado** e nunca devolvem nada do futuro (há teste automático).
 
+## Hipóteses pré-registradas (`mesa hipotese`)
+
+Parâmetros e critérios de aprovação **fixados no código antes de rodar** (sem opções de linha de comando para mexer). Hoje há uma: **H1 (funding)**. Veja `docs/RESULTADOS.md` e `docs/MESA_COMPUTADOR.md`.
+
 ## Varredura de horizontes (`mesa varrer`)
 
 Roda o mesmo backtest em vários horizontes (padrão: 4, 8, 12, 24, 48 e 96 horas) e **corrige pelo número de testes**: com N testes, o limite de significância passa de 0,05 para 0,05 ÷ N (correção de Bonferroni). Só é "candidato" quem passa nessa correção, tem ≥ 30 operações e também é positivo no período de teste. Os horizontes devem ser escolhidos **antes** de olhar os resultados. O servidor roda a varredura sozinha (sobre o histórico já baixado) e a mostra na página de status; `MESA_VARREDURA=0` desliga.
